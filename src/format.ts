@@ -1,11 +1,5 @@
 const DAY = 86_400_000;
 
-/** "Rp 189.000", or "Free" for 0. */
-export function rupiah(n: number): string {
-  if (n === 0) return "Free";
-  return "Rp " + Math.round(n).toLocaleString("id-ID");
-}
-
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
 /** "14 Mar 2024" from "2024-03-14". */
@@ -28,9 +22,9 @@ export function ago(timestamp: string, now = new Date()): string {
   return unit(Math.floor(days / 365), "year");
 }
 
-/** "42 h", "6.5 h". */
+/** "42 h", "6.5 h", "1,512 h". */
 export function hours(h: number): string {
-  return `${Number.isInteger(h) ? h : h.toFixed(1)} h`;
+  return `${h.toLocaleString("en-US", { maximumFractionDigits: h < 100 ? 1 : 0 })} h`;
 }
 
 /** "21:14". */
