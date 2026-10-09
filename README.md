@@ -1,5 +1,7 @@
 # Steam Library — Console Mode
 
+![Sit and Play: open the launcher, grab the controller, pick a game with the D-pad, press A](promo/sit-and-play.gif)
+
 A desktop app built with [MyGo](https://github.com/egoist/mygo): a Go backend and a
 TypeScript frontend (Vite) shown in the system webview.
 
