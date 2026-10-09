@@ -30,7 +30,8 @@ export function hints(g: Game): string {
     keyHint(["left", "right"], "Browse") +
     keyHint(["down"], "Game hub") +
     keyHint(["prevTab", "nextTab"], "Switch tab") +
-    keyHint(["shortcuts"], "Shortcuts")
+    keyHint(["fullscreen"], "Full screen") +
+    keyHint(["settings"], "Settings")
   );
 }
 

@@ -20,7 +20,7 @@ export type Command =
   | "installed"
   | "fullscreen"
   | "reload"
-  | "shortcuts"
+  | "settings"
   | "quit";
 
 export interface CommandInfo {
@@ -46,7 +46,7 @@ export const commands: readonly CommandInfo[] = [
   { id: "installed", group: "Sections", label: "Installed games", keys: ["I"] },
   { id: "fullscreen", group: "App", label: "Toggle full screen", keys: ["F11"] },
   { id: "reload", group: "App", label: "Reload the library", keys: ["F5", "Ctrl+R"] },
-  { id: "shortcuts", group: "App", label: "Keyboard shortcuts", keys: ["?", "F1"] },
+  { id: "settings", group: "App", label: "Settings", keys: ["F1", "Ctrl+,"] },
   { id: "quit", group: "App", label: "Quit", keys: ["Ctrl+Q"] },
 ];
 

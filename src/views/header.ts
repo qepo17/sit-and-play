@@ -18,7 +18,7 @@ export function header(current: "home" | "library", account?: Account): string {
       account
         ? `<button type="button" class="icon-button" aria-label="Search" data-action="search">${icon.search()}</button>
     <button type="button" class="icon-button" aria-label="Installed games" data-action="downloads">${icon.download()}</button>
-    <button type="button" class="icon-button" aria-label="Settings" aria-haspopup="menu" data-action="settings">${icon.settings()}</button>
+    <button type="button" class="icon-button" aria-label="Settings" data-action="settings">${icon.settings()}</button>
     ${avatar(account)}`
         : ""
     }

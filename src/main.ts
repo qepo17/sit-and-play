@@ -12,7 +12,6 @@ import {
   removeKey,
   resetKeys,
   setChanges,
-  shortcutOf,
   typesText,
   type Command,
 } from "./shortcuts";
@@ -21,9 +20,9 @@ import { connectView, messageView } from "./views/connect";
 import { gameRow, hints, homeView, selectedGame, stats } from "./views/home";
 import { hubDetails, hubView } from "./views/hub";
 import { libraryResults, libraryView, type LibraryState, type LibraryTab, type LibrarySort } from "./views/library";
-import { shortcutsView } from "./views/shortcuts";
+import { settingsView } from "./views/settings";
 
-type Route = "home" | "hub" | "library" | "connect" | "shortcuts";
+type Route = "home" | "hub" | "library" | "connect" | "settings";
 
 /** How many of the most recently played games the home row shows. */
 const ROW = 15;
@@ -93,8 +92,8 @@ function render(focus?: string) {
           ? hubView(selected(), account)
           : route === "connect"
             ? connectView(account)
-            : route === "shortcuts"
-              ? shortcutsView(recording ?? undefined)
+            : route === "settings"
+              ? settingsView(account, recording ?? undefined)
               : libraryView(games, lib, account);
   }
   app.dataset.route = route;
@@ -122,7 +121,7 @@ function defaultFocus(): HTMLElement | null {
   if (route === "home") return app.querySelector(".tile-selected");
   if (route === "hub") return app.querySelector(".play");
   if (route === "connect") return app.querySelector("#connect-key");
-  if (route === "shortcuts") return app.querySelector(".key-button");
+  if (route === "settings") return app.querySelector(".settings .key-button");
   return app.querySelector(".lib-card, .history .row");
 }
 
@@ -294,7 +293,7 @@ async function disconnect() {
 
 // ---- Shortcuts ----
 
-/** The command whose new key the shortcuts screen waits for. */
+/** The command whose new key the settings screen waits for. */
 let recording: Command | null = null;
 
 function saveShortcuts() {
@@ -346,7 +345,7 @@ function shortcutAction(action: string, id: Command, key: string) {
       resetKeys();
       saveShortcuts();
       toast("Shortcuts reset");
-      render(".key-button");
+      render(`[data-action="keys-reset-all"]`);
       return;
   }
   saveShortcuts();
@@ -381,14 +380,16 @@ app.addEventListener("click", (e) => {
       openLibrary("installed");
       break;
     case "settings":
-      openMenu(el, [
-        { label: "Toggle full screen", run: toggleFullScreen, command: "fullscreen" },
-        { label: "Keyboard shortcuts", run: () => navigate("shortcuts"), command: "shortcuts" },
-        account.connected
-          ? { label: "Disconnect Steam account", run: () => void disconnect() }
-          : { label: "Connect Steam account", run: () => navigate("connect") },
-        { label: "Quit", run: quit, command: "quit" },
-      ]);
+      navigate("settings");
+      break;
+    case "fullscreen":
+      toggleFullScreen();
+      break;
+    case "disconnect":
+      void disconnect();
+      break;
+    case "quit":
+      quit();
       break;
     case "more":
       openMenu(el, [
@@ -450,7 +451,7 @@ app.addEventListener("input", (e) => {
 
 let menu: { el: HTMLElement; anchor: HTMLElement } | null = null;
 
-function openMenu(anchor: HTMLElement, items: { label: string; run: () => void; command?: Command }[]) {
+function openMenu(anchor: HTMLElement, items: { label: string; run: () => void }[]) {
   const wasOpen = menu?.anchor === anchor;
   closeMenu();
   if (wasOpen) return;
@@ -462,12 +463,6 @@ function openMenu(anchor: HTMLElement, items: { label: string; run: () => void; 
     button.type = "button";
     button.setAttribute("role", "menuitem");
     button.textContent = item.label;
-    const key = item.command && shortcutOf(item.command);
-    if (key) {
-      const kbd = document.createElement("kbd");
-      kbd.textContent = key;
-      button.append(kbd);
-    }
     button.addEventListener("click", () => {
       closeMenu(false);
       item.run();
@@ -571,8 +566,8 @@ function runAnywhere(command: Command): boolean {
     case "reload":
       void boot();
       break;
-    case "shortcuts":
-      navigate("shortcuts");
+    case "settings":
+      navigate("settings");
       break;
     case "quit":
       quit();
@@ -639,7 +634,7 @@ document.addEventListener("keydown", (e) => {
       if (command === "back") navigate("home");
       else if (command !== "confirm" || !confirmButton()) return;
       break;
-    case "shortcuts":
+    case "settings":
       if (command === "back") navigate("home");
       else if (isDirection(command))
         moveFocus([...app.querySelectorAll<HTMLElement>("button")], command === "left" || command === "up" ? -1 : 1);

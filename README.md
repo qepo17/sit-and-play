@@ -13,7 +13,7 @@ them (art, tags, price), and **Play** / **Install** hand the game to Steam
 `/mnt/c` and launches it with `steam.exe`; `STEAM_DIR` overrides where Steam is looked for.
 
 Connecting a Steam account with a [Web API key](https://steamcommunity.com/dev/apikey)
-(settings menu, or "Connect Steam account" on the home screen) is optional: it adds the
+(Settings, or "Connect Steam account" on the home screen) is optional: it adds the
 games you own but never played on this computer, and your achievements.
 
 ## Requirements
@@ -48,14 +48,14 @@ go test ./...
 - `src/demo-games.json` — the made-up games of `bun run dev:web`
 - `src/main.ts` — routing, actions and keyboard controls
 - `src/shortcuts.ts` — the keyboard commands and their keys
-- `src/views/` — Home, Game hub, Library and Keyboard shortcuts screens
+- `src/views/` — Home, Game hub, Library and Settings screens
 - `src/mygo.ts` — the typed client, generated from the Go code
 
 ## Controls
 
 `←` `→` browse · `Enter` play or install · `↓` game hub · `Q` `E` switch tab · `Esc` back ·
 `1` `2` `3` games, library, store · `/` search · `I` installed games · `F11` full screen ·
-`F5` reload · `?` shortcuts · `Ctrl+Q` quit
+`F5` reload · `F1` settings · `Ctrl+Q` quit
 
-Every key can be changed under Settings → Keyboard shortcuts (or `?`); the changes are saved
-in `library.json`.
+Settings (the gear, or `F1`) has full screen, the Steam account, Quit, and the keyboard
+shortcuts: every key can be changed there, and the changes are saved in `library.json`.
