@@ -1,7 +1,6 @@
 import type { Account, Game } from "../api";
 import { ago, date, esc, hours } from "../format";
-import { shortcutOf, type Command } from "../shortcuts";
-import { artVars, cover, hero, hint, icon } from "../ui";
+import { artVars, cover, hero, icon, keyHint } from "../ui";
 import { header } from "./header";
 
 export function homeView(games: Game[], selected: Game, account: Account): string {
@@ -29,16 +28,11 @@ export function hints(g: Game): string {
     keyHint(["confirm"], g.installed ? "Play" : "Install") +
     keyHint(["left", "right"], "Browse") +
     keyHint(["down"], "Game hub") +
+    keyHint(["options"], "Options") +
     keyHint(["prevTab", "nextTab"], "Switch tab") +
     keyHint(["fullscreen"], "Full screen") +
     keyHint(["settings"], "Settings")
   );
-}
-
-/** The hint of commands with their first keys, "" if one has no key. */
-function keyHint(ids: Command[], label: string): string {
-  const keys = ids.map(shortcutOf);
-  return keys.every(Boolean) ? hint(keys.join("  "), label) : "";
 }
 
 export function gameRow(games: Game[], selected: Game): string {

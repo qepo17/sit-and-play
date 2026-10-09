@@ -236,6 +236,9 @@ func TestLibraryKeepsStateBetweenLaunches(t *testing.T) {
 	if err := l.SetShortcuts(map[string][]string{"quit": {"Ctrl+W"}, "store": nil}); err != nil {
 		t.Fatal(err)
 	}
+	if err := l.SetButtons(map[string][]string{"back": {"East", "View"}, "search": nil}); err != nil {
+		t.Fatal(err)
+	}
 	if err := l.SetStartFullScreen(true); err != nil {
 		t.Fatal(err)
 	}
@@ -254,6 +257,9 @@ func TestLibraryKeepsStateBetweenLaunches(t *testing.T) {
 	// A command without keys stays without keys, rather than taking its default keys.
 	if got, want := again.Shortcuts(), map[string][]string{"quit": {"Ctrl+W"}, "store": {}}; !reflect.DeepEqual(got, want) {
 		t.Errorf("Shortcuts() = %v, want %v", got, want)
+	}
+	if got, want := again.Buttons(), map[string][]string{"back": {"East", "View"}, "search": {}}; !reflect.DeepEqual(got, want) {
+		t.Errorf("Buttons() = %v, want %v", got, want)
 	}
 	games, err := again.Games(ctx)
 	if err != nil {

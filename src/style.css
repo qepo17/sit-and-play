@@ -58,7 +58,8 @@ button {
   outline: none;
 }
 
-:focus-visible {
+:focus-visible,
+:root[data-input="controller"] :focus {
   outline: 3px solid #fff;
   outline-offset: 4px;
 }
@@ -415,7 +416,8 @@ h2 {
     0 18px 40px rgba(0, 0, 0, 0.45);
 }
 
-.tile-selected:focus-visible {
+.tile-selected:focus-visible,
+:root[data-input="controller"] .tile-selected:focus {
   outline: none;
 }
 
@@ -617,7 +619,8 @@ h2 {
 }
 
 .stat-link:hover,
-.stat-link:focus-visible {
+.stat-link:focus-visible,
+:root[data-input="controller"] .stat-link:focus {
   text-decoration: underline;
 }
 
@@ -659,6 +662,28 @@ kbd {
   border: 1.5px solid rgba(255, 255, 255, 0.6);
   color: #fff;
   white-space: pre;
+}
+
+/* A controller button: a pill, and a circle for the face buttons and the D-pad. */
+kbd.pad {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 12px;
+  line-height: 1;
+}
+
+kbd.pad-round {
+  width: 24px;
+  padding: 0;
+  font-family: system-ui, sans-serif;
+}
+
+.hint kbd.pad + kbd.pad {
+  margin-left: -2px;
 }
 
 /* ---- Game hub ---- */
@@ -1063,7 +1088,8 @@ kbd {
 }
 
 .control input:focus-visible,
-.control select:focus-visible {
+.control select:focus-visible,
+:root[data-input="controller"] .control :is(input, select):focus {
   outline: none;
   border-color: #fff;
 }
@@ -1330,6 +1356,22 @@ kbd {
   padding: 1px 6px;
 }
 
+.setting-detail kbd.pad {
+  height: 20px;
+  min-width: 20px;
+}
+
+.setting-detail kbd.pad-round {
+  width: 20px;
+  padding: 0;
+}
+
+.pad-setting {
+  justify-content: flex-start;
+  gap: 18px;
+  color: var(--fg-muted);
+}
+
 .setting-button {
   flex: none;
   height: 44px;
@@ -1556,7 +1598,8 @@ kbd {
 }
 
 .menu button:hover,
-.menu button:focus-visible {
+.menu button:focus-visible,
+:root[data-input="controller"] .menu button:focus {
   background: rgba(255, 255, 255, 0.1);
   outline: none;
 }

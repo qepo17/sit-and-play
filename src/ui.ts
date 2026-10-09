@@ -1,5 +1,7 @@
 import type { Art, Game } from "./api";
 import { esc } from "./format";
+import { buttonName, isRound } from "./gamepad";
+import { inputDevice, keyName, keysOf, type Command, type Device } from "./shortcuts";
 
 const svg = (body: string, size = 22, filled = false, width = 2) =>
   `<svg width="${size}" height="${size}" viewBox="0 0 24 24" aria-hidden="true" ${
@@ -38,6 +40,11 @@ export const icon = {
     ),
   power: () => svg(`<path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/>`, 20),
   reset: () => svg(`<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>`, 18),
+  controller: () =>
+    svg(
+      `<path d="M7 7h10a5 5 0 0 1 4.9 6l-.8 3.6a2.5 2.5 0 0 1-4.3 1.1L14.5 15h-5l-2.3 2.7a2.5 2.5 0 0 1-4.3-1.1L2.1 13A5 5 0 0 1 7 7z"/><path d="M7 10v3M5.5 11.5h3M16 11h.01M18 13h.01"/>`,
+      20,
+    ),
 };
 
 /** CSS custom properties of a game's art, for an element's style attribute. */
@@ -68,4 +75,27 @@ export function hero(g: Game): string {
 /** Keyboard hint of the console footer. */
 export function hint(key: string, label: string): string {
   return `<span class="hint"><kbd>${esc(key)}</kbd>${esc(label)}</span>`;
+}
+
+/** A key, or a controller button as the controller labels it. */
+export function badge(key: string, device: Device): string {
+  return device === "keyboard"
+    ? `<kbd>${esc(keyName(key))}</kbd>`
+    : `<kbd class="pad${isRound(key) ? " pad-round" : ""}">${esc(buttonName(key))}</kbd>`;
+}
+
+/** The first key of a command, or its first button, as the user last used; "" if it has none. */
+export function shortcut(id: Command): string {
+  const key = keysOf(id, inputDevice())[0];
+  return key ? badge(key, inputDevice()) : "";
+}
+
+/** The hint of commands with their first keys or buttons, "" if one has none. */
+export function keyHint(ids: Command[], label: string): string {
+  const device = inputDevice();
+  const keys = ids.map((id) => keysOf(id, device)[0]);
+  if (!keys.every(Boolean)) return "";
+  return device === "keyboard"
+    ? hint(keys.map((k) => keyName(k!)).join("  "), label)
+    : `<span class="hint">${keys.map((k) => badge(k!, device)).join("")}${esc(label)}</span>`;
 }

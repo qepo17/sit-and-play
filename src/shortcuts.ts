@@ -1,7 +1,10 @@
+import { buttonName } from "./gamepad";
+
 /**
- * The keyboard commands, and the keys that run them. A key is written as
- * its modifiers and its name, e.g. "Ctrl+Q", "F11", "ArrowLeft" or "E".
- * The user may change the keys of every command; the changes are saved.
+ * The commands, and the keys and controller buttons that run them. A key is
+ * written as its modifiers and its name, e.g. "Ctrl+Q", "F11", "ArrowLeft"
+ * or "E"; a button as its place on the controller (see gamepad.ts). The user
+ * may change the keys and buttons of every command; the changes are saved.
  */
 
 export type Command =
@@ -11,6 +14,7 @@ export type Command =
   | "down"
   | "confirm"
   | "back"
+  | "options"
   | "prevTab"
   | "nextTab"
   | "games"
@@ -23,109 +27,132 @@ export type Command =
   | "settings"
   | "quit";
 
+/** What runs the commands: keys, or the buttons of a game controller. */
+export type Device = "keyboard" | "controller";
+
 export interface CommandInfo {
   id: Command;
   label: string;
   group: string;
   keys: readonly string[];
+  buttons: readonly string[];
 }
 
 export const commands: readonly CommandInfo[] = [
-  { id: "left", group: "Navigation", label: "Left · previous game", keys: ["ArrowLeft"] },
-  { id: "right", group: "Navigation", label: "Right · next game", keys: ["ArrowRight"] },
-  { id: "up", group: "Navigation", label: "Up", keys: ["ArrowUp"] },
-  { id: "down", group: "Navigation", label: "Down · game hub", keys: ["ArrowDown"] },
-  { id: "confirm", group: "Navigation", label: "Play or install", keys: ["Enter"] },
-  { id: "back", group: "Navigation", label: "Back", keys: ["Escape", "Backspace"] },
-  { id: "prevTab", group: "Sections", label: "Previous tab", keys: ["Q"] },
-  { id: "nextTab", group: "Sections", label: "Next tab", keys: ["E"] },
-  { id: "games", group: "Sections", label: "Games", keys: ["1"] },
-  { id: "library", group: "Sections", label: "Library", keys: ["2"] },
-  { id: "store", group: "Sections", label: "Steam store", keys: ["3"] },
-  { id: "search", group: "Sections", label: "Search the library", keys: ["/", "Ctrl+F"] },
-  { id: "installed", group: "Sections", label: "Installed games", keys: ["I"] },
-  { id: "fullscreen", group: "App", label: "Toggle full screen", keys: ["F11"] },
-  { id: "reload", group: "App", label: "Reload the library", keys: ["F5", "Ctrl+R"] },
-  { id: "settings", group: "App", label: "Settings", keys: ["F1", "Ctrl+,"] },
-  { id: "quit", group: "App", label: "Quit", keys: ["Ctrl+Q"] },
+  { id: "left", group: "Navigation", label: "Left · previous game", keys: ["ArrowLeft"], buttons: ["Left"] },
+  { id: "right", group: "Navigation", label: "Right · next game", keys: ["ArrowRight"], buttons: ["Right"] },
+  { id: "up", group: "Navigation", label: "Up", keys: ["ArrowUp"], buttons: ["Up"] },
+  { id: "down", group: "Navigation", label: "Down · game hub", keys: ["ArrowDown"], buttons: ["Down"] },
+  { id: "confirm", group: "Navigation", label: "Play or install", keys: ["Enter"], buttons: ["South"] },
+  { id: "back", group: "Navigation", label: "Back", keys: ["Escape", "Backspace"], buttons: ["East"] },
+  { id: "options", group: "Navigation", label: "Game options", keys: ["O"], buttons: ["West"] },
+  { id: "prevTab", group: "Sections", label: "Previous tab", keys: ["Q"], buttons: ["LB"] },
+  { id: "nextTab", group: "Sections", label: "Next tab", keys: ["E"], buttons: ["RB"] },
+  { id: "games", group: "Sections", label: "Games", keys: ["1"], buttons: [] },
+  { id: "library", group: "Sections", label: "Library", keys: ["2"], buttons: [] },
+  { id: "store", group: "Sections", label: "Steam store", keys: ["3"], buttons: [] },
+  { id: "search", group: "Sections", label: "Search the library", keys: ["/", "Ctrl+F"], buttons: ["North"] },
+  { id: "installed", group: "Sections", label: "Installed games", keys: ["I"], buttons: [] },
+  { id: "fullscreen", group: "App", label: "Toggle full screen", keys: ["F11"], buttons: ["View"] },
+  { id: "reload", group: "App", label: "Reload the library", keys: ["F5", "Ctrl+R"], buttons: [] },
+  { id: "settings", group: "App", label: "Settings", keys: ["F1", "Ctrl+,"], buttons: ["Menu"] },
+  { id: "quit", group: "App", label: "Quit", keys: ["Ctrl+Q"], buttons: [] },
 ];
 
 const info = new Map(commands.map((c) => [c.id, c]));
 
-/** The keys the user chose, for the commands whose keys they changed. */
-let changed: Partial<Record<Command, string[]>> = {};
+const defaults = (id: Command, device: Device) => (device === "keyboard" ? info.get(id)!.keys : info.get(id)!.buttons);
 
-export function keysOf(id: Command): readonly string[] {
-  return changed[id] ?? info.get(id)!.keys;
+/** The keys or buttons the user chose, for the commands whose keys or buttons they changed. */
+const changed: Record<Device, Partial<Record<Command, string[]>>> = { keyboard: {}, controller: {} };
+
+/** The keys of a command, or its buttons. */
+export function keysOf(id: Command, device: Device): readonly string[] {
+  return changed[device][id] ?? defaults(id, device);
 }
 
-export function isChanged(id: Command): boolean {
-  return id in changed;
+export function isChanged(id: Command, device: Device): boolean {
+  return id in changed[device];
 }
 
-/** The command a key runs, if any. */
-export function commandOf(key: string): Command | undefined {
-  return commands.find((c) => keysOf(c.id).includes(key))?.id;
+/** The command a key or a button runs, if any. */
+export function commandOf(key: string, device: Device): Command | undefined {
+  return commands.find((c) => keysOf(c.id, device).includes(key))?.id;
 }
 
 /** The changes to save, by command. */
-export function changes(): Record<string, string[]> {
-  return { ...changed };
+export function changes(device: Device): Record<string, string[]> {
+  return { ...changed[device] };
 }
 
 /** Takes in saved changes, leaving out unknown commands. */
-export function setChanges(saved: Record<string, string[]>) {
-  changed = {};
+export function setChanges(device: Device, saved: Record<string, string[]>) {
+  changed[device] = {};
   for (const [id, keys] of Object.entries(saved)) {
-    if (info.has(id as Command) && Array.isArray(keys)) setKeys(id as Command, keys.map(String));
+    if (info.has(id as Command) && Array.isArray(keys)) setKeys(id as Command, keys.map(String), device);
   }
 }
 
-function setKeys(id: Command, keys: string[]) {
-  const defaults = info.get(id)!.keys;
-  if (keys.length === defaults.length && keys.every((k, i) => k === defaults[i])) delete changed[id];
-  else changed[id] = keys;
+function setKeys(id: Command, keys: string[], device: Device) {
+  const d = defaults(id, device);
+  if (keys.length === d.length && keys.every((k, i) => k === d[i])) delete changed[device][id];
+  else changed[device][id] = keys;
 }
 
-/** How many keys a command can have: a key and an alternate. */
+/** How many keys or buttons a command can have: one and an alternate. */
 export const SLOTS = 2;
 
 /**
- * Sets the key in a slot of a command, the first slot free if the slot is
- * past its keys. A key runs one command, so the command that had the key
- * loses it; setKey returns that command.
+ * Sets the key or button in a slot of a command, the first slot free if the
+ * slot is past its keys. A key runs one command, so the command that had the
+ * key loses it; setKey returns that command.
  */
-export function setKey(id: Command, slot: number, key: string): Command | undefined {
-  const keys = [...keysOf(id)];
+export function setKey(id: Command, slot: number, key: string, device: Device): Command | undefined {
+  const keys = [...keysOf(id, device)];
   const at = keys.indexOf(key);
   if (at >= 0) {
     // The command's other key: the two swap.
     if (slot < keys.length) [keys[at], keys[slot]] = [keys[slot]!, keys[at]!];
-    setKeys(id, keys);
+    setKeys(id, keys, device);
     return undefined;
   }
-  const previous = commandOf(key);
-  if (previous) removeKey(previous, key);
+  const previous = commandOf(key, device);
+  if (previous) removeKey(previous, key, device);
   if (slot < keys.length) keys[slot] = key;
   else keys.push(key);
-  setKeys(id, keys.slice(0, SLOTS));
+  setKeys(id, keys.slice(0, SLOTS), device);
   return previous;
 }
 
-export function removeKey(id: Command, key: string) {
+export function removeKey(id: Command, key: string, device: Device) {
   setKeys(
     id,
-    keysOf(id).filter((k) => k !== key),
+    keysOf(id, device).filter((k) => k !== key),
+    device,
   );
 }
 
-export function resetKeys(id?: Command) {
-  if (id) delete changed[id];
-  else changed = {};
+export function resetKeys(device: Device, id?: Command) {
+  if (id) delete changed[device][id];
+  else changed[device] = {};
 }
 
 export function labelOf(id: Command): string {
   return info.get(id)!.label;
+}
+
+// ---- The device in use ----
+
+/** What the user last ran a command with; the screen shows its keys or buttons. */
+let device: Device = "keyboard";
+
+export const inputDevice = () => device;
+
+/** Makes the screen show the keys or the buttons; false if it already does. */
+export function setInputDevice(d: Device): boolean {
+  if (d === device) return false;
+  device = d;
+  return true;
 }
 
 // ---- Keys ----
@@ -195,8 +222,7 @@ export function keyName(key: string): string {
     .join("+");
 }
 
-/** How the screen shows the first key of a command, "" if it has none. */
-export function shortcutOf(id: Command): string {
-  const key = keysOf(id)[0];
-  return key ? keyName(key) : "";
+/** A key or a button as the screen shows it, e.g. "Ctrl+Q", "←" or "A". */
+export function nameOf(key: string, d: Device): string {
+  return d === "keyboard" ? keyName(key) : buttonName(key);
 }

@@ -27,6 +27,7 @@ async function browserApi(): Promise<Api> {
   let account: Account = { connected: false, steamID: "76561190000000000", name: "Qepo", avatar: "", client: true };
   let selected = games[0]!.id;
   let shortcuts: Record<string, string[]> = {};
+  let buttons: Record<string, string[]> = {};
   let startFullScreen = false;
   const find = (id: string) => {
     const g = games.find((g) => g.id === id);
@@ -64,6 +65,10 @@ async function browserApi(): Promise<Api> {
       shortcuts: async () => structuredClone(shortcuts),
       setShortcuts: async (s) => {
         shortcuts = structuredClone(s);
+      },
+      buttons: async () => structuredClone(buttons),
+      setButtons: async (b) => {
+        buttons = structuredClone(b);
       },
       startFullScreen: async () => startFullScreen,
       setStartFullScreen: async (on) => {
