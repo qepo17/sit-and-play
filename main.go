@@ -24,7 +24,7 @@ func main() {
 		}
 
 		win := mygo.NewWindow(mygo.WindowOptions{
-			Title:           "Steam Library",
+			Title:           "Sit and Play",
 			Width:           1440,
 			Height:          900,
 			MinWidth:        960,
