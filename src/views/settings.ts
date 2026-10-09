@@ -1,24 +1,27 @@
 import type { Account } from "../api";
 import { clock, esc } from "../format";
-import { commands, isChanged, keyName, keysOf, shortcutOf, SLOTS, type Command } from "../shortcuts";
-import { hint, icon } from "../ui";
+import { commands, isChanged, keysOf, nameOf, SLOTS, type Command, type Device } from "../shortcuts";
+import { badge, hint, icon, keyHint, shortcut } from "../ui";
 import { avatar } from "./header";
 
-export type SettingsTab = "general" | "account" | "keyboard";
+export type SettingsTab = "general" | "account" | "keyboard" | "controller";
 
 export interface SettingsState {
   tab: SettingsTab;
   account: Account;
   fullScreen: boolean;
   startFullScreen: boolean;
-  /** The key slot waiting for a key press, if any. */
-  recording: { id: Command; slot: number } | null;
+  /** The key or button slot waiting for a key or button press, if any. */
+  recording: { id: Command; slot: number; device: Device } | null;
+  /** The names of the controllers connected. */
+  controllers: string[];
 }
 
 const tabs: [SettingsTab, string, () => string][] = [
   ["general", "General", icon.display],
   ["account", "Steam account", icon.user],
   ["keyboard", "Keyboard", icon.keyboard],
+  ["controller", "Controller", icon.controller],
 ];
 
 /** The settings: a sidebar of sections, the section chosen, and Quit. */
@@ -41,25 +44,28 @@ export function settingsView(s: SettingsState): string {
         )
         .join("")}
       <div class="grow"></div>
-      <button type="button" class="settings-tab settings-quit" data-action="quit">${icon.power()}Quit${keyBadge("quit")}</button>
+      <button type="button" class="settings-tab settings-quit" data-action="quit">${icon.power()}Quit${shortcut("quit")}</button>
     </nav>
     <section class="settings-pane" aria-label="${esc(tabs.find(([id]) => id === s.tab)![1])}">
-      ${s.tab === "general" ? general(s) : s.tab === "account" ? accountPane(s.account) : keyboard(s)}
+      ${
+        s.tab === "general"
+          ? general(s)
+          : s.tab === "account"
+            ? accountPane(s.account)
+            : s.tab === "keyboard"
+              ? keyboard(s)
+              : controller(s)
+      }
     </section>
   </div>
   <footer class="hints">${settingsHints(s)}</footer>
 </div>`;
 }
 
-function keyBadge(id: Command): string {
-  const key = shortcutOf(id);
-  return key ? `<kbd>${esc(key)}</kbd>` : "";
-}
-
 /** "Or press F11", or "" when the command has no key. */
 function orPress(id: Command): string {
-  const key = shortcutOf(id);
-  return key ? ` Or press <kbd>${esc(key)}</kbd>.` : "";
+  const key = shortcut(id);
+  return key ? ` Or press ${key}.` : "";
 }
 
 function general(s: SettingsState): string {
@@ -113,18 +119,42 @@ function accountPane(a: Account): string {
 }
 
 function keyboard(s: SettingsState): string {
-  const groups = [...new Set(commands.map((c) => c.group))];
   return `
 <div class="pane-head">
   <div>
     <h2 class="pane-title">Keyboard</h2>
     <p class="setting-detail">Select a key to change it, then press the new key.</p>
   </div>
-  <button type="button" class="setting-button" data-action="keys-reset-all">Restore defaults</button>
+  <button type="button" class="setting-button" data-action="keys-reset-all" data-device="keyboard">Restore defaults</button>
 </div>
-<div class="keymap" role="table" aria-label="Keyboard shortcuts">
+${keymap(s, "keyboard")}`;
+}
+
+function controller(s: SettingsState): string {
+  const status = s.controllers.length
+    ? `<span class="setting-label">${esc(s.controllers.join(", "))}</span>
+      <span class="setting-detail">The left stick moves too, and the right stick scrolls.</span>`
+    : `<span class="setting-label">No controller found</span>
+      <span class="setting-detail">Connect one and press any of its buttons.</span>`;
+  return `
+<div class="pane-head">
+  <div>
+    <h2 class="pane-title">Controller</h2>
+    <p class="setting-detail">Select a button to change it, then press the new button.</p>
+  </div>
+  <button type="button" class="setting-button" data-action="keys-reset-all" data-device="controller">Restore defaults</button>
+</div>
+<div class="setting-list"><div class="setting pad-setting">${icon.controller()}<div class="setting-text">${status}</div></div></div>
+${keymap(s, "controller")}`;
+}
+
+function keymap(s: SettingsState, device: Device): string {
+  const groups = [...new Set(commands.map((c) => c.group))];
+  const what = device === "keyboard" ? "Key" : "Button";
+  return `
+<div class="keymap" role="table" aria-label="${device === "keyboard" ? "Keyboard shortcuts" : "Controller buttons"}">
   <div class="keymap-row keymap-head" role="row">
-    <span role="columnheader">Action</span><span role="columnheader">Key</span><span role="columnheader">Alternate</span><span></span>
+    <span role="columnheader">Action</span><span role="columnheader">${what}</span><span role="columnheader">Alternate</span><span></span>
   </div>
   ${groups
     .map(
@@ -132,42 +162,40 @@ function keyboard(s: SettingsState): string {
   <div class="keymap-group" role="row"><span role="rowheader">${esc(group)}</span></div>
   ${commands
     .filter((c) => c.group === group)
-    .map((c) => keyRow(c.id, c.label, s.recording?.id === c.id ? s.recording.slot : -1))
+    .map((c) => keyRow(c.id, c.label, device, s.recording?.id === c.id && s.recording.device === device ? s.recording.slot : -1))
     .join("")}`,
     )
     .join("")}
 </div>`;
 }
 
-function keyRow(id: Command, label: string, recordingSlot: number): string {
-  const keys = keysOf(id);
+function keyRow(id: Command, label: string, device: Device, recordingSlot: number): string {
+  const keys = keysOf(id, device);
+  const thing = device === "keyboard" ? "key" : "button";
   const slots = Array.from({ length: SLOTS }, (_, slot) => {
     const key = keys[slot];
     const listening = slot === recordingSlot;
-    const name = key ? keyName(key) : "";
-    const which = slot === 0 ? "key" : "alternate key";
-    return `<span role="cell"><button type="button" class="key-slot${listening ? " key-listening" : ""}${key ? "" : " key-empty"}" data-action="key-slot" data-command="${id}" data-slot="${slot}" aria-label="${
+    const name = key ? nameOf(key, device) : "";
+    const which = slot === 0 ? thing : `alternate ${thing}`;
+    return `<span role="cell"><button type="button" class="key-slot${listening ? " key-listening" : ""}${key ? "" : " key-empty"}" data-action="key-slot" data-device="${device}" data-command="${id}" data-slot="${slot}" aria-label="${
       listening ? `Press the new ${which} for ${esc(label)}` : `${esc(label)}, ${which}: ${name ? esc(name) : "none"}. Change`
-    }">${listening ? "Press a key…" : key ? `<kbd>${esc(name)}</kbd>` : "Add"}</button></span>`;
+    }">${listening ? `Press a ${thing}…` : key ? badge(key, device) : "Add"}</button></span>`;
   }).join("");
   return `
 <div class="keymap-row" role="row">
   <span class="keymap-label" role="rowheader">${esc(label)}</span>
   ${slots}
   <span role="cell">${
-    isChanged(id)
-      ? `<button type="button" class="icon-button key-reset" aria-label="Restore the keys of ${esc(label)}" title="Restore default" data-action="key-reset" data-command="${id}">${icon.reset()}</button>`
+    isChanged(id, device)
+      ? `<button type="button" class="icon-button key-reset" aria-label="Restore the ${thing}s of ${esc(label)}" title="Restore default" data-action="key-reset" data-device="${device}" data-command="${id}">${icon.reset()}</button>`
       : ""
   }</span>
 </div>`;
 }
 
 function settingsHints(s: SettingsState): string {
+  if (s.recording?.device === "controller")
+    return `<span class="hint">Press the same button to keep it</span>` + hint("Esc", "Cancel") + hint("Delete", "Clear the button");
   if (s.recording) return hint("Esc", "Cancel") + hint("Delete", "Clear the key");
-  const keys = (ids: Command[]) => ids.map(shortcutOf);
-  const h = (ids: Command[], label: string) => {
-    const k = keys(ids);
-    return k.every(Boolean) ? hint(k.join("  "), label) : "";
-  };
-  return h(["up", "down"], "Move") + h(["confirm"], "Select") + h(["back"], "Back");
+  return keyHint(["up", "down"], "Move") + keyHint(["confirm"], "Select") + keyHint(["back"], "Back");
 }

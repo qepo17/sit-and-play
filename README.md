@@ -46,8 +46,9 @@ go test ./...
   playtime, the signed-in account
 - `steam.go` — the Steam Web API and store; `art.go` — a game's colors from its picture
 - `src/demo-games.json` — the made-up games of `bun run dev:web`
-- `src/main.ts` — routing, actions and keyboard controls
-- `src/shortcuts.ts` — the keyboard commands and their keys
+- `src/main.ts` — routing, actions, and keyboard and controller controls
+- `src/shortcuts.ts` — the commands and their keys and controller buttons
+- `src/gamepad.ts` — reading game controllers (the Gamepad API)
 - `src/views/` — Home, Game hub, Library and Settings screens
 - `src/mygo.ts` — the typed client, generated from the Go code
 
@@ -57,6 +58,16 @@ go test ./...
 `1` `2` `3` games, library, store · `/` search · `I` installed games · `F11` full screen ·
 `F5` reload · `F1` settings · `Ctrl+Q` quit
 
-Settings (the gear, or `F1`) has General (full screen, start in full screen, reload), Steam
-account, Keyboard and Quit. Under Keyboard every action has a key and an alternate: select one and press the new
-key (`Esc` cancels, `Delete` clears). The changes are saved in `library.json`.
+`O` opens the options of a game. On the home screen `↑` goes to the header; elsewhere the
+arrows move between the buttons of the screen.
+
+A game controller drives the app too. Pressing any of its buttons switches the hints on screen
+to the controller's buttons, labeled as on an Xbox, PlayStation or Nintendo controller; a key
+or a mouse click switches them back. D-pad or left stick move · `A` select, play or install ·
+`B` back · `X` game options · `Y` search · `LB` `RB` switch tab · `View` full screen ·
+`Menu` settings · right stick scrolls. On a list such as Sort by, left and right pick the option.
+
+Settings (the gear, `F1` or `Menu`) has General (full screen, start in full screen, reload),
+Steam account, Keyboard, Controller and Quit. Under Keyboard and Controller every action has a
+key or button and an alternate: select one and press the new key or button (`Esc` cancels,
+`Delete` clears; pressing the same button keeps it). The changes are saved in `library.json`.

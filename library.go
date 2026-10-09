@@ -119,6 +119,9 @@ type savedState struct {
 	// Shortcuts has the keys of the keyboard commands the user changed,
 	// by command.
 	Shortcuts map[string][]string `json:"shortcuts,omitempty"`
+	// Buttons has the controller buttons of the commands the user
+	// changed, by command.
+	Buttons map[string][]string `json:"buttons,omitempty"`
 	// StartFullScreen opens the app in full screen.
 	StartFullScreen bool `json:"startFullScreen,omitempty"`
 }
@@ -600,11 +603,7 @@ func (l *Library) Select(id string) error {
 func (l *Library) Shortcuts() map[string][]string {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	shortcuts := map[string][]string{}
-	for command, keys := range l.state.Shortcuts {
-		shortcuts[command] = slices.Clone(keys)
-	}
-	return shortcuts
+	return cloneBindings(l.state.Shortcuts)
 }
 
 // SetShortcuts keeps the keys of the keyboard commands the user changed, by
@@ -612,14 +611,37 @@ func (l *Library) Shortcuts() map[string][]string {
 func (l *Library) SetShortcuts(shortcuts map[string][]string) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	l.state.Shortcuts = map[string][]string{}
-	for command, keys := range shortcuts {
+	l.state.Shortcuts = cloneBindings(shortcuts)
+	return l.saveLocked()
+}
+
+// Buttons returns the controller buttons of the commands the user changed,
+// by command; the page knows the buttons of the others.
+func (l *Library) Buttons() map[string][]string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return cloneBindings(l.state.Buttons)
+}
+
+// SetButtons keeps the controller buttons of the commands the user
+// changed, by command. An empty list is a command without buttons.
+func (l *Library) SetButtons(buttons map[string][]string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.state.Buttons = cloneBindings(buttons)
+	return l.saveLocked()
+}
+
+// cloneBindings copies keys or buttons by command, a nil list as an empty one.
+func cloneBindings(bindings map[string][]string) map[string][]string {
+	clone := map[string][]string{}
+	for command, keys := range bindings {
 		if keys == nil {
 			keys = []string{}
 		}
-		l.state.Shortcuts[command] = slices.Clone(keys)
+		clone[command] = slices.Clone(keys)
 	}
-	return l.saveLocked()
+	return clone
 }
 
 // StartFullScreen tells whether the app opens in full screen.

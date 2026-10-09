@@ -111,6 +111,13 @@ export const Library = {
     return call("Library.Account");
   },
   /**
+   * Buttons returns the controller buttons of the commands the user changed,
+   * by command; the page knows the buttons of the others.
+   */
+  buttons(): Promise<Record<string, string[]>> {
+    return call("Library.Buttons");
+  },
+  /**
    * Connect connects a Steam account with a Web API key, from
    * https://steamcommunity.com/dev/apikey. account is its SteamID64, its
    * profile URL or the custom name in that URL; "" is the account signed in
@@ -161,6 +168,13 @@ export const Library = {
    */
   selected(): Promise<string> {
     return call("Library.Selected");
+  },
+  /**
+   * SetButtons keeps the controller buttons of the commands the user
+   * changed, by command. An empty list is a command without buttons.
+   */
+  setButtons(buttons: Record<string, string[]>): Promise<void> {
+    return call("Library.SetButtons", buttons);
   },
   /**
    * SetShortcuts keeps the keys of the keyboard commands the user changed, by
