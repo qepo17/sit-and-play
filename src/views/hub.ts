@@ -1,18 +1,13 @@
-import type { Game } from "../api";
-import { ago, clock, date, esc, hours, rupiah } from "../format";
-import { artVars, icon } from "../ui";
-import { playButton } from "./home";
+import type { Account, Game } from "../api";
+import { ago, clock, date, esc, hours } from "../format";
+import { artVars, hero, icon } from "../ui";
+import { lastPlayed, playButton } from "./home";
 
-export function hubView(g: Game): string {
-  const pct = Math.round((g.achievementsUnlocked / g.achievementsTotal) * 100);
-  const addOnsTotal = g.addOns.reduce((sum, a) => sum + a.price, 0);
-  const total = g.pricePaid + addOnsTotal;
-  const discount =
-    g.storePriceThen > g.pricePaid ? Math.round((1 - g.pricePaid / g.storePriceThen) * 100) : 0;
+export function hubView(g: Game, account: Account): string {
   const tags = [
-    g.installed ? `Installed · ${g.sizeGB} GB` : `Not installed · ${g.sizeGB} GB`,
+    g.installed ? `Installed · ${g.sizeGB} GB` : "Not installed",
     g.controller && "Controller supported",
-    g.cloudSaves && "Cloud saves on",
+    g.cloudSaves && "Steam Cloud",
   ].filter(Boolean) as string[];
 
   return `
@@ -23,6 +18,7 @@ export function hubView(g: Game): string {
       <div class="backdrop-band"></div>
       <div class="backdrop-ring"></div>
     </div>
+    <div class="hero" aria-hidden="true">${hero(g)}</div>
     <div class="hub-hero-body">
       <header class="topbar">
         <button type="button" class="back" data-action="nav" data-to="home">${icon.back()}Games</button>
@@ -30,7 +26,7 @@ export function hubView(g: Game): string {
       </header>
       <div class="grow"></div>
       <div class="selected">
-        <div class="eyebrow">${esc(g.genre)}</div>
+        ${g.genre ? `<div class="eyebrow">${esc(g.genre)}</div>` : ""}
         <h1 class="display">${esc(g.title)}</h1>
         <div class="chips">${tags.map((t) => `<span class="chip">${esc(t)}</span>`).join("")}</div>
         <div class="actions">
@@ -42,82 +38,24 @@ export function hubView(g: Game): string {
   </div>
 
   <div class="hub-content">
-    <div class="hub-main">
-      <section class="hub-section">
-        <div class="section-head">
-          <h2>Achievements</h2>
-          <span class="muted">${g.achievementsUnlocked} of ${g.achievementsTotal} · ${pct}%</span>
-        </div>
-        <div class="meter meter-accent" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Achievements unlocked"><div style="width:${pct}%"></div></div>
-        <div class="grid-3">
-          ${g.achievements
-            .map(
-              (a) => `
-          <div class="card achievement${a.unlocked ? "" : " achievement-locked"}">
-            <div class="badge">${a.unlocked ? icon.trophy() : icon.lock()}</div>
-            <div class="card-title">${esc(a.title)}</div>
-            <div class="muted-sm">${esc(a.detail)}</div>
-          </div>`,
-            )
-            .join("")}
-        </div>
-      </section>
-
-      <section class="hub-section">
-        <h2>Owned add-ons</h2>
-        ${
-          g.addOns.length
-            ? `<div class="rows">${g.addOns
-                .map(
-                  (a) => `
-          <div class="card row">
-            <div class="thumb thumb-${a.art === "band" ? "band" : "orb"}" aria-hidden="true"><span></span></div>
-            <div class="row-text"><div class="card-title">${esc(a.title)}</div><div class="muted-sm">Bought ${date(a.boughtOn)}${a.note ? ` · ${esc(a.note)}` : ""}</div></div>
-            <div class="row-price">${rupiah(a.price)}</div>
-          </div>`,
-                )
-                .join("")}</div>`
-            : `<div class="card empty muted-sm">You don't own any add-ons for ${esc(g.title)}.</div>`
-        }
-      </section>
-
-      <section class="hub-section">
-        <h2>News</h2>
-        <div class="grid-2">
-          ${g.news
-            .map(
-              (n) => `
-          <article class="card news">
-            <span class="news-tag">${esc(n.tag)}</span>
-            <span class="news-title">${esc(n.title)}</span>
-            <span class="muted-sm">${esc(n.when)}</span>
-          </article>`,
-            )
-            .join("")}
-        </div>
-      </section>
-    </div>
+    <div class="hub-main" id="hub-details">${hubDetails(g, account)}</div>
 
     <aside class="hub-aside">
       <section class="card panel">
-        <h2 class="panel-title">Your purchase</h2>
+        <h2 class="panel-title">In the store</h2>
         <div class="paid">
-          <div class="muted-sm">Paid</div>
-          <div class="paid-line"><span class="paid-value">${rupiah(g.pricePaid)}</span>${
-            discount ? `<span class="discount">${discount}% off</span>` : ""
+          <div class="muted-sm">Price today</div>
+          <div class="paid-line"><span class="paid-value">${esc(g.price.now || "Not sold")}</span>${
+            g.price.discount ? `<span class="discount">${g.price.discount}% off</span>` : ""
           }</div>
         </div>
         <dl class="facts">
-          <dt>Bought on</dt><dd>${date(g.purchasedOn)}</dd>
-          <dt>Store price then</dt><dd>${rupiah(g.storePriceThen)}</dd>
-          <dt>Store price now</dt><dd>${rupiah(g.storePriceNow)}</dd>
-          <dt>Add-ons</dt><dd>${addOnsTotal ? rupiah(addOnsTotal) : "None"}</dd>
+          ${g.price.before ? `<dt>Before the discount</dt><dd>${esc(g.price.before)}</dd>` : ""}
+          ${g.released ? `<dt>Released</dt><dd>${date(g.released)}</dd>` : ""}
+          ${g.developer ? `<dt>Developer</dt><dd>${esc(g.developer)}</dd>` : ""}
+          ${g.publisher && g.publisher !== g.developer ? `<dt>Publisher</dt><dd>${esc(g.publisher)}</dd>` : ""}
         </dl>
-        <div class="rule"></div>
-        <div class="total"><span class="muted">Total spent on this game</span><span class="total-value">${rupiah(total)}</span></div>
-        <div class="total"><span class="muted">Cost per hour played</span><span class="total-value">${
-          g.hours ? rupiah(total / g.hours) : "—"
-        }</span></div>
+        <button type="button" class="pill-link panel-link" data-action="store-game" data-id="${g.id}">Store page${icon.next()}</button>
       </section>
 
       <section class="card panel">
@@ -126,9 +64,60 @@ export function hubView(g: Game): string {
           <div><div class="big">${hours(g.hours)}</div><div class="muted-sm">Total</div></div>
           <div><div class="big">${hours(g.recentHours)}</div><div class="muted-sm">Last 2 weeks</div></div>
         </div>
-        <div class="muted-sm">First played ${date(g.firstPlayed)} · last played ${ago(g.lastPlayed)}</div>
+        <div class="muted-sm">${lastPlayed(g)}</div>
       </section>
     </aside>
   </div>
 </div>`;
+}
+
+/** The hub's sections that Library.details loads. */
+export function hubDetails(g: Game, account: Account): string {
+  return `
+<section class="hub-section">${achievements(g, account)}</section>
+<section class="hub-section">
+  <h2>News</h2>
+  ${
+    !g.detailed
+      ? `<div class="card empty muted-sm">Loading…</div>`
+      : g.news.length
+        ? `<div class="grid-2">${g.news
+            .map(
+              (n) => `
+    <button type="button" class="card news" data-action="news" data-url="${esc(n.url)}">
+      <span class="news-tag">${esc(n.tag)}</span>
+      <span class="news-title">${esc(n.title)}</span>
+      <span class="muted-sm">${ago(n.when)}</span>
+    </button>`,
+            )
+            .join("")}</div>`
+        : `<div class="card empty muted-sm">No news for ${esc(g.title)}.</div>`
+  }
+</section>`;
+}
+
+function achievements(g: Game, account: Account): string {
+  const head = (detail = "") =>
+    `<div class="section-head"><h2>Achievements</h2>${detail ? `<span class="muted">${detail}</span>` : ""}</div>`;
+  if (!account.connected)
+    return `${head()}<div class="card empty connect-card"><span class="muted-sm">Connect your Steam account to see your achievements.</span><button type="button" class="pill-link" data-action="connect">Connect${icon.next()}</button></div>`;
+  if (!g.detailed) return `${head()}<div class="card empty muted-sm">Loading…</div>`;
+  if (!g.achievementsTotal) return `${head()}<div class="card empty muted-sm">${esc(g.title)} has no achievements.</div>`;
+  const pct = Math.round((g.achievementsUnlocked / g.achievementsTotal) * 100);
+  return `${head(`${g.achievementsUnlocked} of ${g.achievementsTotal} · ${pct}%`)}
+  <div class="meter meter-accent" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Achievements unlocked"><div style="width:${pct}%"></div></div>
+  <div class="grid-3">
+    ${g.achievements
+      .map(
+        (a) => `
+    <div class="card achievement${a.unlocked ? "" : " achievement-locked"}">
+      <div class="badge">${a.unlocked ? icon.trophy() : icon.lock()}</div>
+      <div class="card-title">${esc(a.title)}</div>
+      <div class="muted-sm">${
+        a.unlocked && a.unlockedAt ? `Unlocked ${ago(a.unlockedAt)}` : esc(a.detail ? `Next up · ${a.detail}` : "Next up")
+      }</div>
+    </div>`,
+      )
+      .join("")}
+  </div>`;
 }

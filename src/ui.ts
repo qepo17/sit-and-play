@@ -1,4 +1,4 @@
-import type { Art } from "./api";
+import type { Art, Game } from "./api";
 import { esc } from "./format";
 
 const svg = (body: string, size = 22, filled = false, width = 2) =>
@@ -36,11 +36,24 @@ export function artVars(a: Art): string {
   return `--bg:${a.bg};--a1:${a.a1};--a2:${a.a2};--cx:${a.cx}%;--cy:${a.cy}%;--rot:${a.rot}deg`;
 }
 
-/** The shapes of a cover; the element around it sets artVars. */
-export function coverShapes(label?: string): string {
+/**
+ * A game's cover: its library picture over its generated art, which shows
+ * with the title when there is no picture or it fails to load. The element
+ * around it sets artVars.
+ */
+export function cover(g: Game, label = true): string {
   return `<span class="cover-orb"></span><span class="cover-band"></span>${
-    label ? `<span class="cover-label">${esc(label)}</span>` : ""
-  }`;
+    g.cover
+      ? `<img class="cover-img" src="${esc(g.cover)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`
+      : ""
+  }${label ? `<span class="cover-label">${esc(g.title)}</span>` : ""}`;
+}
+
+/** A game's wide picture, which fades in over the generated backdrop. */
+export function hero(g: Game): string {
+  return g.hero
+    ? `<img class="hero-img" src="${esc(g.hero)}" alt="" decoding="async" onload="this.classList.add('hero-on')" onerror="this.remove()">`
+    : "";
 }
 
 /** Keyboard hint of the console footer. */

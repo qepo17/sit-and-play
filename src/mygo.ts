@@ -4,26 +4,34 @@ import { call } from "mygo-runtime";
 
 // ---- Types ----
 
+/** Account is the Steam account whose games the library shows. */
+export interface Account {
+  /**
+   * Connected tells whether the account is connected with a Web API
+   * key, which adds the games not played on this computer and the
+   * achievements. Otherwise the account is the one signed in to the
+   * Steam client.
+   */
+  connected: boolean;
+  steamID: string;
+  name: string;
+  avatar: string;
+  /** Client tells whether the Steam client is installed on this computer. */
+  client: boolean;
+}
+
 /** Achievement is one achievement shown in a game's hub. */
 export interface Achievement {
   title: string;
   detail: string;
   unlocked: boolean;
-}
-
-/** AddOn is downloadable content the user owns for a game. */
-export interface AddOn {
-  title: string;
-  boughtOn: string;
-  price: number;
-  note?: string;
-  /** Art is the thumbnail's shape: "orb" or "band". */
-  art: string;
+  unlockedAt?: string;
 }
 
 /**
- * Art describes a game's generated cover: a disc and a band over a
- * background color, positioned in percent of the cover.
+ * Art describes a game's generated art: a disc and a band over a
+ * background color, positioned in percent of the cover. Its colors are
+ * those of the game's store picture.
  */
 export interface Art {
   bg: string;
@@ -34,32 +42,39 @@ export interface Art {
   rot: number;
 }
 
-/**
- * Game is a game in the user's library. Prices are in rupiah, dates are
- * YYYY-MM-DD.
- */
+/** Game is a game of the Steam account. Dates are YYYY-MM-DD. */
 export interface Game {
+  /** the Steam app ID */
   id: string;
   title: string;
   genre: string;
   blurb: string;
   art: Art;
-  purchasedOn: string;
-  pricePaid: number;
-  storePriceThen: number;
-  storePriceNow: number;
+  /**
+   * Cover is the URL of the portrait library picture, Hero the URL of
+   * the wide one; either may be missing or fail to load.
+   */
+  cover?: string;
+  hero?: string;
+  developer: string;
+  publisher: string;
+  released?: string;
+  price: Price;
   installed: boolean;
   sizeGB: number;
   controller: boolean;
   cloudSaves: boolean;
   hours: number;
   recentHours: number;
-  firstPlayed: string;
-  lastPlayed: string;
+  lastPlayed?: string;
+  /**
+   * Detailed tells whether the art's colors, the achievements and the
+   * news are loaded; Library.Details loads them.
+   */
+  detailed: boolean;
   achievementsUnlocked: number;
   achievementsTotal: number;
   achievements: Achievement[];
-  addOns: AddOn[];
   news: News[];
 }
 
@@ -68,26 +83,67 @@ export interface News {
   tag: string;
   title: string;
   when: string;
+  url: string;
+}
+
+/**
+ * Price is a game's price in the Steam store today, formatted in the
+ * currency of the account's country.
+ */
+export interface Price {
+  /** Now is the price, "Free", or "" when the store doesn't sell the game. */
+  now: string;
+  /** Before is the price before the current discount, if any. */
+  before?: string;
+  discount?: number;
 }
 
 // ---- Services ----
 
 /**
- * Library is the user's game collection, with the game selected on the
- * home screen and when each game was last played.
+ * Library is the user's Steam games, with the game selected on the home
+ * screen. The Steam client of this computer tells which are installed and
+ * played; the store describes them.
  */
 export const Library = {
-  /** Games returns every game in the library, in the order of the home row. */
+  /** Account returns the account whose games the library shows. */
+  account(): Promise<Account> {
+    return call("Library.Account");
+  },
+  /**
+   * Connect connects a Steam account with a Web API key, from
+   * https://steamcommunity.com/dev/apikey. account is its SteamID64, its
+   * profile URL or the custom name in that URL; "" is the account signed in
+   * to the Steam client.
+   */
+  connect(apiKey: string, account: string): Promise<Account> {
+    return call("Library.Connect", apiKey, account);
+  },
+  /**
+   * Details returns the game with the given ID with the colors of its art,
+   * its news, and its achievements when an account is connected.
+   */
+  details(id: string): Promise<Game> {
+    return call("Library.Details", id);
+  },
+  /** Disconnect forgets the connected account and its Web API key. */
+  disconnect(): Promise<void> {
+    return call("Library.Disconnect");
+  },
+  /**
+   * Games returns the games installed or played on this computer, and the
+   * other games of a connected account, the most recently played first.
+   */
   games(): Promise<Game[]> {
     return call("Library.Games");
   },
-  /** Install installs the game with the given ID and returns it. */
+  /** Install asks the Steam client to install the game with the given ID. */
   install(id: string): Promise<Game> {
     return call("Library.Install", id);
   },
   /**
-   * Play starts a session of the game with the given ID and returns the game
-   * with its last session updated.
+   * Play launches the game with the given ID in the Steam client and returns
+   * the game with its last session updated.
    */
   play(id: string): Promise<Game> {
     return call("Library.Play", id);
@@ -99,16 +155,30 @@ export const Library = {
   select(id: string): Promise<void> {
     return call("Library.Select", id);
   },
-  /** Selected returns the ID of the game selected on the home screen. */
+  /**
+   * Selected returns the ID of the game selected on the home screen, "" if
+   * none was.
+   */
   selected(): Promise<string> {
     return call("Library.Selected");
   },
 } as const;
 
-/** Store opens the Steam store, which is not part of the app. */
+/**
+ * Store opens pages of the Steam store and community in the default
+ * browser.
+ */
 export const Store = {
-  /** Open shows the Steam store in the default browser. */
+  /** Open shows the Steam store. */
   open(): Promise<void> {
     return call("Store.Open");
+  },
+  /** OpenGame shows the store page of the game with the given ID. */
+  openGame(id: string): Promise<void> {
+    return call("Store.OpenGame", id);
+  },
+  /** OpenLink shows a web page, such as a news item. */
+  openLink(link: string): Promise<void> {
+    return call("Store.OpenLink", link);
   },
 } as const;

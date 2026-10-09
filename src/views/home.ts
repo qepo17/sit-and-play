@@ -1,9 +1,9 @@
-import type { Game } from "../api";
-import { ago, date, esc, hours, rupiah } from "../format";
-import { artVars, coverShapes, hint, icon } from "../ui";
+import type { Account, Game } from "../api";
+import { ago, date, esc, hours } from "../format";
+import { artVars, cover, hero, hint, icon } from "../ui";
 import { header } from "./header";
 
-export function homeView(games: Game[], selected: Game): string {
+export function homeView(games: Game[], selected: Game, account: Account): string {
   return `
 <div class="home" style="${artVars(selected.art)}">
   <div class="backdrop" aria-hidden="true">
@@ -11,17 +11,20 @@ export function homeView(games: Game[], selected: Game): string {
     <div class="backdrop-band"></div>
     <div class="backdrop-ring"></div>
   </div>
+  <div class="hero" aria-hidden="true">${hero(selected)}</div>
   <div class="home-body">
-    ${header("home", true)}
+    ${header("home", account)}
     <div class="game-row" role="toolbar" aria-label="Games">${gameRow(games, selected)}</div>
     <div class="grow"></div>
     <section class="selected" aria-label="Selected game" aria-live="polite">${selectedGame(selected)}</section>
-    <div class="stat-cards">${stats(selected)}</div>
-    <footer class="hints">
-      ${hint("Enter", "Play")}${hint("←  →", "Browse")}${hint("↓", "Game hub")}${hint("Q  E", "Switch tab")}
-    </footer>
+    <div class="stat-cards">${stats(selected, account)}</div>
+    <footer class="hints">${hints(selected)}</footer>
   </div>
 </div>`;
+}
+
+export function hints(g: Game): string {
+  return hint("Enter", g.installed ? "Play" : "Install") + hint("←  →", "Browse") + hint("↓", "Game hub") + hint("Q  E", "Switch tab");
 }
 
 export function gameRow(games: Game[], selected: Game): string {
@@ -30,10 +33,10 @@ export function gameRow(games: Game[], selected: Game): string {
       .map((g) =>
         g.id === selected.id
           ? `<div class="tile-on">
-  <button type="button" class="tile tile-selected" style="${artVars(g.art)}" aria-label="${esc(g.title)}" aria-pressed="true" data-action="select" data-id="${g.id}">${coverShapes(g.title)}</button>
+  <button type="button" class="tile tile-selected" style="${artVars(g.art)}" aria-label="${esc(g.title)}" aria-pressed="true" data-action="select" data-id="${g.id}">${cover(g)}</button>
   <span class="tile-title">${esc(g.title)}</span>
 </div>`
-          : `<button type="button" class="tile" style="${artVars(g.art)}" aria-label="${esc(g.title)}" aria-pressed="false" data-action="select" data-id="${g.id}" tabindex="-1">${coverShapes()}</button>`,
+          : `<button type="button" class="tile" style="${artVars(g.art)}" aria-label="${esc(g.title)}" aria-pressed="false" data-action="select" data-id="${g.id}" tabindex="-1">${cover(g, false)}</button>`,
       )
       .join("") +
     `<button type="button" class="tile tile-library" aria-label="Open game library" data-action="nav" data-to="library" tabindex="-1">${icon.grid()}Library</button>`
@@ -42,9 +45,9 @@ export function gameRow(games: Game[], selected: Game): string {
 
 export function selectedGame(g: Game): string {
   return `
-<div class="eyebrow">${esc(g.genre)}</div>
+${g.genre ? `<div class="eyebrow">${esc(g.genre)}</div>` : ""}
 <h1 class="display">${esc(g.title)}</h1>
-<p class="blurb">${esc(g.blurb)}</p>
+${g.blurb ? `<p class="blurb">${esc(g.blurb)}</p>` : ""}
 <div class="actions">
   ${playButton(g)}
   <button type="button" class="round-button" aria-label="More options" aria-haspopup="menu" data-action="more" data-id="${g.id}">${icon.more()}</button>
@@ -58,22 +61,35 @@ export function playButton(g: Game): string {
     : `<button type="button" class="play" data-action="install" data-id="${g.id}">${icon.download()}Install</button>`;
 }
 
-export function stats(g: Game): string {
-  const pct = Math.round((g.achievementsUnlocked / g.achievementsTotal) * 100);
+/** "3 days ago", or "Never played". */
+export function lastPlayed(g: Game): string {
+  return g.lastPlayed ? `Last played ${ago(g.lastPlayed)}` : "Never played";
+}
+
+export function stats(g: Game, account: Account): string {
   return `
 <div class="stat-card">
-  <div class="caps">Purchased</div>
-  <div class="stat-value">${date(g.purchasedOn)}</div>
-  <div class="stat-sub">${g.pricePaid ? `Paid ${rupiah(g.pricePaid)}` : "Free to play"}</div>
+  <div class="caps">${g.installed ? "Installed" : "Store price"}</div>
+  <div class="stat-value">${g.installed ? `${g.sizeGB} GB` : esc(g.price.now || "Not sold")}</div>
+  <div class="stat-sub">${g.installed ? "Ready to play" : g.price.discount ? `${g.price.discount}% off today` : g.released ? `Released ${date(g.released)}` : ""}</div>
 </div>
 <div class="stat-card">
   <div class="caps">Playtime</div>
   <div class="stat-value">${hours(g.hours)}</div>
-  <div class="stat-sub">Last played ${ago(g.lastPlayed)}</div>
+  <div class="stat-sub">${lastPlayed(g)}</div>
 </div>
 <div class="stat-card">
   <div class="caps">Achievements</div>
-  <div class="stat-value">${g.achievementsUnlocked} of ${g.achievementsTotal}</div>
-  <div class="meter" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Achievements unlocked"><div style="width:${pct}%"></div></div>
+  ${achievementStat(g, account)}
 </div>`;
+}
+
+function achievementStat(g: Game, account: Account): string {
+  if (!account.connected)
+    return `<div class="stat-value">—</div><button type="button" class="stat-link" data-action="connect">Connect Steam account${icon.next()}</button>`;
+  if (!g.detailed) return `<div class="stat-value stat-loading">Loading…</div>`;
+  if (!g.achievementsTotal) return `<div class="stat-value">None</div><div class="stat-sub">This game has no achievements</div>`;
+  const pct = Math.round((g.achievementsUnlocked / g.achievementsTotal) * 100);
+  return `<div class="stat-value">${g.achievementsUnlocked} of ${g.achievementsTotal}</div>
+  <div class="meter" role="progressbar" aria-valuenow="${pct}" aria-valuemin="0" aria-valuemax="100" aria-label="Achievements unlocked"><div style="width:${pct}%"></div></div>`;
 }

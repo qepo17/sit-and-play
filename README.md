@@ -4,7 +4,17 @@ A desktop app built with [MyGo](https://github.com/egoist/mygo): a Go backend an
 TypeScript frontend (Vite) shown in the system webview.
 
 Screens: **Home** (game row), **Game hub** and **Library** (installed, collection,
-purchase history).
+last two weeks).
+
+It shows your real Steam library without signing in: the Steam client on this computer
+tells which games are installed and played (with playtime), the Steam store describes
+them (art, tags, price), and **Play** / **Install** hand the game to Steam
+(`steam://rungameid/…`, `steam://install/…`). On WSL it finds Steam for Windows under
+`/mnt/c` and launches it with `steam.exe`; `STEAM_DIR` overrides where Steam is looked for.
+
+Connecting a Steam account with a [Web API key](https://steamcommunity.com/dev/apikey)
+(settings menu, or "Connect Steam account" on the home screen) is optional: it adds the
+games you own but never played on this computer, and your achievements.
 
 ## Requirements
 
@@ -16,7 +26,7 @@ purchase history).
 ```sh
 bun install
 bun run dev      # mygo dev: runs the app with live reload
-bun run dev:web  # the page alone in a browser, with in-memory data
+bun run dev:web  # the page alone in a browser, with made-up games
 ```
 
 ## Build
@@ -29,14 +39,18 @@ go test ./...
 ## Layout
 
 - `main.go` — the window
-- `library.go` — the `Library` and `Store` services the page calls; state is saved to
-  `library.json` in the app's user-data directory
-- `catalog.json` — the sample games, embedded into the binary
+- `library.go` — the `Library` and `Store` services the page calls; state (the selected
+  game, and the Web API key when connected) is saved to `library.json` in the app's
+  user-data directory
+- `local.go`, `vdf.go` — reading the Steam client's files: libraries, app manifests,
+  playtime, the signed-in account
+- `steam.go` — the Steam Web API and store; `art.go` — a game's colors from its picture
+- `src/demo-games.json` — the made-up games of `bun run dev:web`
 - `src/main.ts` — routing, actions and keyboard controls
 - `src/views/` — Home, Game hub and Library screens
 - `src/mygo.ts` — the typed client, generated from the Go code
 
 ## Controls
 
-`←` `→` browse · `Enter` play · `↓` game hub · `Q` `E` switch tab · `Esc` back ·
+`←` `→` browse · `Enter` play or install · `↓` game hub · `Q` `E` switch tab · `Esc` back ·
 `F11` full screen

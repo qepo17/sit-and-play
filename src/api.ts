@@ -1,32 +1,49 @@
 import { isMyGo } from "mygo-runtime";
 import * as client from "./mygo";
-import type { Game } from "./mygo";
+import type { Account, Game } from "./mygo";
 
-export type { Game, Art, AddOn, Achievement, News } from "./mygo";
+export type { Account, Game, Art, Achievement, News, Price } from "./mygo";
 
 type Api = { Library: typeof client.Library; Store: typeof client.Store };
 
 /**
  * A stand-in for the Go services when the page is opened in a browser tab
  * of the dev server, so the layout can be worked on outside the app. It
- * reads the catalog the Go side embeds and keeps state in memory.
+ * reads made-up games and keeps state in memory.
  */
 async function browserApi(): Promise<Api> {
-  const { default: catalog } = await import("../catalog.json");
+  const { default: demo } = await import("./demo-games.json");
   const now = Date.now();
-  const games: Game[] = catalog.map(({ lastPlayedDaysAgo, ...g }) => ({
+  const daysAgo = (n: number) => new Date(now - n * 86_400_000).toISOString();
+  const games: Game[] = demo.map(({ lastPlayedDaysAgo, achievements, news, ...g }) => ({
     ...g,
-    lastPlayed: new Date(now - lastPlayedDaysAgo * 86_400_000).toISOString(),
+    lastPlayed: daysAgo(lastPlayedDaysAgo),
+    achievements: achievements.map(({ unlockedDaysAgo, ...a }) => ({
+      ...a,
+      ...(unlockedDaysAgo === undefined ? {} : { unlockedAt: daysAgo(unlockedDaysAgo) }),
+    })),
+    news: news.map(({ whenDaysAgo, ...n }) => ({ ...n, when: daysAgo(whenDaysAgo) })),
   }));
+  let account: Account = { connected: false, steamID: "76561190000000000", name: "Qepo", avatar: "", client: true };
   let selected = games[0]!.id;
   const find = (id: string) => {
     const g = games.find((g) => g.id === id);
     if (!g) throw new Error(`no game "${id}"`);
     return g;
   };
+  const web = (url: string) => void window.open(url, "_blank");
   return {
     Library: {
+      account: async () => account,
+      connect: async (apiKey) => {
+        if (!apiKey.trim()) throw new Error("enter your Steam Web API key");
+        return (account = { ...account, connected: true });
+      },
+      disconnect: async () => {
+        account = { ...account, connected: false };
+      },
       games: async () => structuredClone(games),
+      details: async (id) => structuredClone(find(id)),
       selected: async () => selected,
       select: async (id) => {
         selected = find(id).id;
@@ -44,9 +61,9 @@ async function browserApi(): Promise<Api> {
       },
     },
     Store: {
-      open: async () => {
-        window.open("https://store.steampowered.com/", "_blank");
-      },
+      open: async () => web("https://store.steampowered.com/"),
+      openGame: async (id) => web(`https://store.steampowered.com/app/${id}`),
+      openLink: async (link) => web(link),
     },
   };
 }
