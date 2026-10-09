@@ -162,6 +162,28 @@ export const Library = {
   selected(): Promise<string> {
     return call("Library.Selected");
   },
+  /**
+   * SetShortcuts keeps the keys of the keyboard commands the user changed, by
+   * command. An empty list is a command without keys.
+   */
+  setShortcuts(shortcuts: Record<string, string[]>): Promise<void> {
+    return call("Library.SetShortcuts", shortcuts);
+  },
+  /** SetStartFullScreen makes the app open in full screen, or in a window. */
+  setStartFullScreen(on: boolean): Promise<void> {
+    return call("Library.SetStartFullScreen", on);
+  },
+  /**
+   * Shortcuts returns the keys of the keyboard commands the user changed, by
+   * command; the page knows the keys of the others.
+   */
+  shortcuts(): Promise<Record<string, string[]>> {
+    return call("Library.Shortcuts");
+  },
+  /** StartFullScreen tells whether the app opens in full screen. */
+  startFullScreen(): Promise<boolean> {
+    return call("Library.StartFullScreen");
+  },
 } as const;
 
 /**
@@ -180,5 +202,17 @@ export const Store = {
   /** OpenLink shows a web page, such as a news item. */
   openLink(link: string): Promise<void> {
     return call("Store.OpenLink", link);
+  },
+} as const;
+
+/** App is the application, for the page. */
+export const App = {
+  /** FullScreen tells whether the window of the page fills the screen. */
+  fullScreen(): Promise<boolean> {
+    return call("App.FullScreen");
+  },
+  /** Quit closes the app's windows, the store's included, and quits. */
+  quit(): Promise<void> {
+    return call("App.Quit");
   },
 } as const;

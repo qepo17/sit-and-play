@@ -116,6 +116,11 @@ type savedState struct {
 	// LastPlayed has the sessions started from the app, which Steam
 	// reports only once they end.
 	LastPlayed map[string]time.Time `json:"lastPlayed"`
+	// Shortcuts has the keys of the keyboard commands the user changed,
+	// by command.
+	Shortcuts map[string][]string `json:"shortcuts,omitempty"`
+	// StartFullScreen opens the app in full screen.
+	StartFullScreen bool `json:"startFullScreen,omitempty"`
 }
 
 // details is what Library.Details adds to a game.
@@ -587,6 +592,48 @@ func (l *Library) Select(id string) error {
 		return nil
 	}
 	l.state.Selected = id
+	return l.saveLocked()
+}
+
+// Shortcuts returns the keys of the keyboard commands the user changed, by
+// command; the page knows the keys of the others.
+func (l *Library) Shortcuts() map[string][]string {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	shortcuts := map[string][]string{}
+	for command, keys := range l.state.Shortcuts {
+		shortcuts[command] = slices.Clone(keys)
+	}
+	return shortcuts
+}
+
+// SetShortcuts keeps the keys of the keyboard commands the user changed, by
+// command. An empty list is a command without keys.
+func (l *Library) SetShortcuts(shortcuts map[string][]string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.state.Shortcuts = map[string][]string{}
+	for command, keys := range shortcuts {
+		if keys == nil {
+			keys = []string{}
+		}
+		l.state.Shortcuts[command] = slices.Clone(keys)
+	}
+	return l.saveLocked()
+}
+
+// StartFullScreen tells whether the app opens in full screen.
+func (l *Library) StartFullScreen() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.state.StartFullScreen
+}
+
+// SetStartFullScreen makes the app open in full screen, or in a window.
+func (l *Library) SetStartFullScreen(on bool) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.state.StartFullScreen = on
 	return l.saveLocked()
 }
 

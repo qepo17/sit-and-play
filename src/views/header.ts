@@ -18,7 +18,7 @@ export function header(current: "home" | "library", account?: Account): string {
       account
         ? `<button type="button" class="icon-button" aria-label="Search" data-action="search">${icon.search()}</button>
     <button type="button" class="icon-button" aria-label="Installed games" data-action="downloads">${icon.download()}</button>
-    <button type="button" class="icon-button" aria-label="Settings" aria-haspopup="menu" data-action="settings">${icon.settings()}</button>
+    <button type="button" class="icon-button" aria-label="Settings" data-action="settings">${icon.settings()}</button>
     ${avatar(account)}`
         : ""
     }
@@ -27,7 +27,7 @@ export function header(current: "home" | "library", account?: Account): string {
 </header>`;
 }
 
-function avatar(a: Account): string {
+export function avatar(a: Account): string {
   const name = a.name || "Steam";
   return `<span class="avatar" role="img" aria-label="Profile: ${esc(name)}">${
     a.avatar ? `<img src="${esc(a.avatar)}" alt="" onerror="this.remove()">` : ""

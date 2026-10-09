@@ -1,14 +1,29 @@
 import "./style.css";
 import { currentWindow, isMyGo } from "mygo-runtime";
-import { Library, Store, type Account, type Game } from "./api";
+import { App, Library, Store, type Account, type Game } from "./api";
 import { clock } from "./format";
+import {
+  changes,
+  commandOf,
+  keyName,
+  keyOf,
+  keysOf,
+  labelOf,
+  removeKey,
+  resetKeys,
+  setChanges,
+  setKey,
+  typesText,
+  type Command,
+} from "./shortcuts";
 import { artVars, hero } from "./ui";
 import { connectView, messageView } from "./views/connect";
 import { gameRow, hints, homeView, selectedGame, stats } from "./views/home";
 import { hubDetails, hubView } from "./views/hub";
 import { libraryResults, libraryView, type LibraryState, type LibraryTab, type LibrarySort } from "./views/library";
+import { settingsView, type SettingsTab } from "./views/settings";
 
-type Route = "home" | "hub" | "library" | "connect";
+type Route = "home" | "hub" | "library" | "connect" | "settings";
 
 /** How many of the most recently played games the home row shows. */
 const ROW = 15;
@@ -22,6 +37,9 @@ let route: Route = "home";
 const lib: LibraryState = { tab: "installed", query: "", sort: "recent" };
 
 const selected = () => games.find((g) => g.id === selectedId) ?? games[0]!;
+
+/** Whether the screen shows games, rather than a message when there are none. */
+const showsGames = () => route === "home" || route === "hub" || route === "library";
 
 /** The home row: the latest games played, and the selected one. */
 function homeGames(): Game[] {
@@ -38,7 +56,15 @@ async function boot() {
   closeMenu();
   app.innerHTML = messageView("Loading your Steam library…");
   try {
-    [account, games, selectedId] = await Promise.all([Library.account(), Library.games(), Library.selected()]);
+    let shortcuts: Record<string, string[]>;
+    [account, games, selectedId, shortcuts, startFullScreen] = await Promise.all([
+      Library.account(),
+      Library.games(),
+      Library.selected(),
+      Library.shortcuts(),
+      Library.startFullScreen(),
+    ]);
+    setChanges(shortcuts);
   } catch (err) {
     app.innerHTML = messageView(
       "Can't load your library",
@@ -58,7 +84,7 @@ async function boot() {
 
 function render(focus?: string) {
   closeMenu();
-  if (!games.length && route !== "connect") {
+  if (!games.length && showsGames()) {
     app.innerHTML = emptyView();
   } else {
     app.innerHTML =
@@ -68,7 +94,9 @@ function render(focus?: string) {
           ? hubView(selected(), account)
           : route === "connect"
             ? connectView(account)
-            : libraryView(games, lib, account);
+            : route === "settings"
+              ? settingsView({ tab: settingsTab, account, fullScreen, startFullScreen, recording })
+              : libraryView(games, lib, account);
   }
   app.dataset.route = route;
   const target = focus ? app.querySelector<HTMLElement>(focus) : defaultFocus();
@@ -91,15 +119,18 @@ function emptyView(): string {
 }
 
 function defaultFocus(): HTMLElement | null {
-  if (!games.length && route !== "connect") return app.querySelector(".actions button");
+  if (!games.length && showsGames()) return app.querySelector(".actions button");
   if (route === "home") return app.querySelector(".tile-selected");
   if (route === "hub") return app.querySelector(".play");
   if (route === "connect") return app.querySelector("#connect-key");
+  if (route === "settings") return app.querySelector(`[data-settings-tab="${settingsTab}"]`);
   return app.querySelector(".lib-card, .history .row");
 }
 
 function navigate(to: Route, focus?: string) {
   route = to;
+  recording = null;
+  if (to === "settings") void showFullScreen();
   window.scrollTo(0, 0);
   render(focus);
 }
@@ -161,7 +192,7 @@ async function refresh() {
   } catch {
     return; // the games shown still play
   }
-  if (installed(games) !== before && route !== "connect") render();
+  if (installed(games) !== before && showsGames()) render();
 }
 
 function revealSelectedTile() {
@@ -213,8 +244,12 @@ async function install(id: string) {
   }
 }
 
+function quit() {
+  App.quit().catch(showError);
+}
+
 function toggleFullScreen() {
-  if (isMyGo()) void currentWindow.toggleFullScreen();
+  if (isMyGo()) currentWindow.toggleFullScreen().then(showFullScreen, showError);
   else if (document.fullscreenElement) void document.exitFullscreen();
   else void document.documentElement.requestFullscreen();
 }
@@ -259,6 +294,109 @@ async function disconnect() {
   await boot();
 }
 
+// ---- Settings ----
+
+let settingsTab: SettingsTab = "general";
+
+/** The key slot whose new key the settings screen waits for. */
+let recording: { id: Command; slot: number } | null = null;
+
+/** Whether the window fills the screen, as last asked. */
+let fullScreen = false;
+
+/** Whether the app opens in full screen. */
+let startFullScreen = false;
+
+function setStartFullScreen(on: boolean) {
+  startFullScreen = on;
+  app.querySelector(`[data-action="start-fullscreen"]`)?.setAttribute("aria-checked", String(on));
+  Library.setStartFullScreen(on).catch((err) => {
+    setStartFullScreen(!on);
+    showError(err);
+  });
+}
+
+/** Asks whether the window fills the screen, and turns the full screen switch to match. */
+async function showFullScreen() {
+  try {
+    fullScreen = await App.fullScreen();
+  } catch {
+    return;
+  }
+  app.querySelector(`.switch[data-action="fullscreen"]`)?.setAttribute("aria-checked", String(fullScreen));
+}
+
+window.addEventListener("resize", () => void showFullScreen());
+document.addEventListener("fullscreenchange", () => void showFullScreen());
+
+function saveShortcuts() {
+  Library.setShortcuts(changes()).catch(showError);
+}
+
+const slotButton = (id: Command, slot: number) => `[data-action="key-slot"][data-command="${id}"][data-slot="${slot}"]`;
+
+/** Takes the key pressed while recording, before the keyboard commands run. */
+window.addEventListener(
+  "keydown",
+  (e) => {
+    if (!recording) return;
+    const key = keyOf(e);
+    if (!key) return; // a modifier, waiting for the key
+    const { id, slot } = recording;
+    recording = null;
+    if (key === "Tab" || key === "Shift+Tab") {
+      render(slotButton(id, slot));
+      return; // moves the focus from the slot
+    }
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (key === "Delete") {
+      const k = keysOf(id)[slot];
+      if (k) {
+        removeKey(id, k);
+        saveShortcuts();
+        toast(`${labelOf(id)}: ${keyName(k)} removed`);
+      }
+    } else if (key !== "Escape") {
+      const from = setKey(id, slot, key);
+      saveShortcuts();
+      toast(from ? `${keyName(key)} now runs ${labelOf(id)}, not ${labelOf(from)}` : `${labelOf(id)}: ${keyName(key)}`);
+    }
+    render(slotButton(id, Math.min(slot, keysOf(id).length)));
+  },
+  true,
+);
+
+function settingsAction(el: HTMLElement) {
+  const was = recording;
+  recording = null;
+  const id = el.dataset.command as Command;
+  switch (el.dataset.action) {
+    case "settings-tab":
+      settingsTab = el.dataset.settingsTab as SettingsTab;
+      render(`[data-settings-tab="${settingsTab}"]`);
+      break;
+    case "key-slot": {
+      const slot = Number(el.dataset.slot);
+      if (was?.id !== id || was.slot !== slot) recording = { id, slot };
+      render(slotButton(id, slot));
+      break;
+    }
+    case "key-reset":
+      resetKeys(id);
+      saveShortcuts();
+      toast(`${labelOf(id)}: default keys`);
+      render(slotButton(id, 0));
+      break;
+    case "keys-reset-all":
+      resetKeys();
+      saveShortcuts();
+      toast("Default keys restored");
+      render(`[data-action="keys-reset-all"]`);
+      break;
+  }
+}
+
 app.addEventListener("click", (e) => {
   const el = (e.target as Element).closest<HTMLElement>("[data-action]");
   if (!el) return;
@@ -287,12 +425,16 @@ app.addEventListener("click", (e) => {
       openLibrary("installed");
       break;
     case "settings":
-      openMenu(el, [
-        { label: "Toggle full screen", run: toggleFullScreen },
-        account.connected
-          ? { label: "Disconnect Steam account", run: () => void disconnect() }
-          : { label: "Connect Steam account", run: () => navigate("connect") },
-      ]);
+      navigate("settings");
+      break;
+    case "fullscreen":
+      toggleFullScreen();
+      break;
+    case "disconnect":
+      void disconnect();
+      break;
+    case "quit":
+      quit();
       break;
     case "more":
       openMenu(el, [
@@ -325,6 +467,18 @@ app.addEventListener("click", (e) => {
       break;
     case "hub":
       open(id, "hub");
+      break;
+    case "settings-tab":
+    case "key-slot":
+    case "key-reset":
+    case "keys-reset-all":
+      settingsAction(el);
+      break;
+    case "reload":
+      void boot();
+      break;
+    case "start-fullscreen":
+      setStartFullScreen(!startFullScreen);
       break;
   }
 });
@@ -388,11 +542,24 @@ function closeMenu(restoreFocus = true) {
 
 document.addEventListener("pointerdown", (e) => {
   if (menu && !menu.el.contains(e.target as Node) && !menu.anchor.contains(e.target as Node)) closeMenu(false);
+  // Pressing a button of the screen stops recording when it is clicked.
+  if (recording && !(e.target as Element).closest("[data-action]")) {
+    const { id, slot } = recording;
+    recording = null;
+    render(slotButton(id, slot));
+  }
 });
 
 // ---- Keyboard ----
 
 const tabsOrder: Route[] = ["home", "library"];
+
+type Direction = "left" | "right" | "up" | "down";
+
+const isDirection = (c: Command): c is Direction => c === "left" || c === "right" || c === "up" || c === "down";
+
+/** Whether a key clicks a focused button by itself. */
+const clicksButtons = (key: string) => key === "Enter" || key === "Space";
 
 function moveFocus(items: HTMLElement[], step: number) {
   const i = items.indexOf(document.activeElement as HTMLElement);
@@ -400,18 +567,17 @@ function moveFocus(items: HTMLElement[], step: number) {
 }
 
 /** Moves focus in the library grid by a row or a column. */
-function gridMove(key: string): boolean {
+function gridMove(direction: Direction): boolean {
   const cards = [...app.querySelectorAll<HTMLElement>(".lib-card, .history .row")];
   const i = cards.indexOf(document.activeElement as HTMLElement);
   if (i < 0) {
-    if (key !== "ArrowDown") return false;
+    if (direction !== "down") return false;
     cards[0]?.focus();
     return true;
   }
   const top = cards[0]!.offsetTop;
   const columns = Math.max(1, cards.filter((c) => c.offsetTop === top).length);
-  const step = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -columns, ArrowDown: columns }[key] ?? 0;
-  const next = i + step;
+  const next = i + { left: -1, right: 1, up: -columns, down: columns }[direction];
   if (next < 0) {
     app.querySelector<HTMLElement>("#lib-search")?.focus();
     return true;
@@ -420,66 +586,150 @@ function gridMove(key: string): boolean {
   return true;
 }
 
+/** Focuses the nearest button in a direction; a section of the sidebar shows as it gets the focus. */
+function settingsMove(direction: Direction) {
+  const from = document.activeElement as HTMLElement;
+  const buttons = [...app.querySelectorAll<HTMLElement>(".settings button")];
+  if (!buttons.includes(from)) return buttons[0]?.focus();
+  const a = from.getBoundingClientRect();
+  const [ax, ay] = [a.left + a.width / 2, a.top + a.height / 2];
+  let best: HTMLElement | undefined;
+  let bestScore = Infinity;
+  for (const b of buttons) {
+    if (b === from) continue;
+    const r = b.getBoundingClientRect();
+    const dx = r.left + r.width / 2 - ax;
+    const dy = r.top + r.height / 2 - ay;
+    // How far along the direction, and how far off it.
+    const [along, off] = direction === "left" ? [-dx, dy] : direction === "right" ? [dx, dy] : direction === "up" ? [-dy, dx] : [dy, dx];
+    if (along <= 4) continue;
+    const score = along + Math.abs(off) * 3;
+    if (score < bestScore) [best, bestScore] = [b, score];
+  }
+  if (!best) return;
+  const tab = best.dataset.settingsTab as SettingsTab | undefined;
+  if (tab && from.dataset.settingsTab && tab !== settingsTab) {
+    settingsTab = tab;
+    render(`[data-settings-tab="${tab}"]`);
+  } else {
+    best.focus();
+    best.scrollIntoView({ block: "nearest" });
+  }
+}
+
+/** Runs a command that works on every screen; false for the others. */
+function runAnywhere(command: Command): boolean {
+  switch (command) {
+    case "prevTab":
+    case "nextTab": {
+      const i = tabsOrder.indexOf(route === "library" ? "library" : "home");
+      navigate(tabsOrder[(i + (command === "nextTab" ? 1 : -1) + tabsOrder.length) % tabsOrder.length]!);
+      break;
+    }
+    case "games":
+      navigate("home");
+      break;
+    case "library":
+      navigate("library");
+      break;
+    case "store":
+      Store.open().catch(showError);
+      break;
+    case "search":
+      lib.query = "";
+      openLibrary("collection", "#lib-search");
+      break;
+    case "installed":
+      openLibrary("installed");
+      break;
+    case "fullscreen":
+      toggleFullScreen();
+      break;
+    case "reload":
+      void boot();
+      break;
+    case "settings":
+      navigate("settings");
+      break;
+    case "quit":
+      quit();
+      break;
+    default:
+      return false;
+  }
+  return true;
+}
+
 document.addEventListener("keydown", (e) => {
-  if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.defaultPrevented) return;
+  const key = keyOf(e);
+  if (!key) return;
+  const command = commandOf(key);
+  if (!command) return;
+  const target = e.target as Element;
+
+  // The confirm key clicks the focused button, as Enter and Space do.
+  const onButton = target.closest<HTMLElement>("button:not(.tile)");
+  const confirmButton = () => {
+    if (!onButton || clicksButtons(key)) return false;
+    onButton.click();
+    return true;
+  };
 
   if (menu) {
     const items = [...menu.el.querySelectorAll<HTMLElement>("button")];
-    if (e.key === "Escape") closeMenu();
-    else if (e.key === "ArrowDown" || e.key === "ArrowUp") moveFocus(items, e.key === "ArrowDown" ? 1 : -1);
-    else return; // Enter, Space and Tab work as they do on buttons
+    if (command === "back") closeMenu();
+    else if (command === "up" || command === "down") moveFocus(items, command === "down" ? 1 : -1);
+    else if (command === "confirm" ? !confirmButton() : !runAnywhere(command)) return;
     e.preventDefault();
     return;
   }
 
-  if (e.key === "F11") {
-    e.preventDefault();
-    toggleFullScreen();
-    return;
-  }
-
-  const field = (e.target as Element).closest("input, select, textarea");
+  const field = target.closest<HTMLElement>("input, select, textarea");
   if (field) {
-    if (e.key === "Escape") (field as HTMLElement).blur();
-    else if (e.key === "ArrowDown" && field.id === "lib-search" && gridMove("ArrowDown")) e.preventDefault();
+    if (typesText(key)) return;
+    if (command === "back") field.blur();
+    else if (command === "down" && field.id === "lib-search" && gridMove("down")) e.preventDefault();
+    else if (runAnywhere(command)) e.preventDefault();
     return;
   }
 
-  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
-  if (key === "q" || key === "e") {
-    const i = tabsOrder.indexOf(route === "library" ? "library" : "home");
-    navigate(tabsOrder[(i + (key === "e" ? 1 : -1) + tabsOrder.length) % tabsOrder.length]!);
+  if (runAnywhere(command)) {
     e.preventDefault();
     return;
   }
 
-  if (!games.length) return; // loading, or a message such as "No games yet"
-  const onButton = (e.target as Element).closest("button:not(.tile)");
+  if (!games.length && showsGames()) return; // loading, or a message such as "No games yet"
   switch (route) {
     case "home":
-      if (key === "ArrowLeft" || key === "ArrowRight") browse(key === "ArrowRight" ? 1 : -1);
-      else if (key === "ArrowDown") navigate("hub");
-      else if (key === "Enter" && !onButton) {
+      if (command === "left" || command === "right") browse(command === "right" ? 1 : -1);
+      else if (command === "down") navigate("hub");
+      else if (command === "confirm" && onButton) {
+        if (!confirmButton()) return;
+      } else if (command === "confirm") {
         const g = selected();
         void (g.installed ? play(g.id) : install(g.id));
       } else return;
-      e.preventDefault();
       break;
     case "hub":
     case "connect":
-      if (key === "Escape" || key === "Backspace") {
-        navigate("home");
-        e.preventDefault();
-      }
+      if (command === "back") navigate("home");
+      else if (command !== "confirm" || !confirmButton()) return;
       break;
+    case "settings": {
+      const inPane = target.closest(".settings-pane");
+      if (command === "back" && inPane) app.querySelector<HTMLElement>(`[data-settings-tab="${settingsTab}"]`)?.focus();
+      else if (command === "back") navigate("home");
+      else if (isDirection(command)) settingsMove(command);
+      else if (command !== "confirm" || !confirmButton()) return;
+      break;
+    }
     case "library":
-      if (key === "Escape" || key === "Backspace") navigate("home");
-      else if (key.startsWith("Arrow") && gridMove(key)) {
-        /* moved */
-      } else return;
-      e.preventDefault();
+      if (command === "back") navigate("home");
+      else if (isDirection(command) ? !gridMove(command) : command !== "confirm" || !confirmButton()) return;
       break;
   }
+  e.preventDefault();
 });
 
 // ---- Feedback ----

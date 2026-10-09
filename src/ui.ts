@@ -29,6 +29,15 @@ export const icon = {
     svg(`<path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/>`, 22, false, 2.2),
   lock: () =>
     svg(`<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>`, 22, false, 2.2),
+  display: () => svg(`<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8"/><path d="M12 16v4"/>`, 20),
+  user: () => svg(`<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>`, 20),
+  keyboard: () =>
+    svg(
+      `<rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M8 14h8"/>`,
+      20,
+    ),
+  power: () => svg(`<path d="M12 3v9"/><path d="M6.3 6.3a8 8 0 1 0 11.4 0"/>`, 20),
+  reset: () => svg(`<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/>`, 18),
 };
 
 /** CSS custom properties of a game's art, for an element's style attribute. */
