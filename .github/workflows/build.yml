@@ -1,0 +1,76 @@
+name: Build
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Package (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux/amd64
+            artifact: linux-amd64
+          - os: windows-2025
+            platform: windows/amd64
+            artifact: windows-amd64
+    env:
+      CGO_ENABLED: "0"
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version-file: package.json
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Test Go
+        run: go test ./...
+      - name: Vet Go
+        run: go vet ./...
+      - name: Build packages
+        env:
+          BUILD_PLATFORM: ${{ matrix.platform }}
+        run: bun run build -platform "$BUILD_PLATFORM"
+      - name: Verify generated bindings
+        run: git diff --exit-code -- src/mygo.ts
+      - name: Verify packages and prepare downloads
+        env:
+          BUILD_ARTIFACT: ${{ matrix.artifact }}
+        run: |
+          mkdir -p artifacts
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            test -s "build/$BUILD_ARTIFACT/Sit and Play.exe"
+            compgen -G "build/$BUILD_ARTIFACT/*Setup*.exe" > /dev/null
+            cp build/"$BUILD_ARTIFACT"/*Setup*.exe artifacts/
+          else
+            test -x "build/$BUILD_ARTIFACT/sit-and-play"
+            compgen -G "build/$BUILD_ARTIFACT/*.deb" > /dev/null
+            compgen -G "build/$BUILD_ARTIFACT/*.tar.gz" > /dev/null
+            test -s "build/$BUILD_ARTIFACT/install.sh"
+            cp build/"$BUILD_ARTIFACT"/*.deb build/"$BUILD_ARTIFACT"/*.tar.gz build/"$BUILD_ARTIFACT"/install.sh artifacts/
+          fi
+          test -s "build/$BUILD_ARTIFACT/LICENSE"
+          test -s "build/$BUILD_ARTIFACT/licenses/Sora-OFL.txt"
+          test -s "build/$BUILD_ARTIFACT/licenses/DM-Sans-OFL.txt"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages-${{ matrix.artifact }}
+          path: artifacts/*
+          if-no-files-found: error
+          retention-days: 14
