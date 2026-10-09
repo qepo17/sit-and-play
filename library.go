@@ -119,6 +119,8 @@ type savedState struct {
 	// Shortcuts has the keys of the keyboard commands the user changed,
 	// by command.
 	Shortcuts map[string][]string `json:"shortcuts,omitempty"`
+	// StartFullScreen opens the app in full screen.
+	StartFullScreen bool `json:"startFullScreen,omitempty"`
 }
 
 // details is what Library.Details adds to a game.
@@ -617,6 +619,21 @@ func (l *Library) SetShortcuts(shortcuts map[string][]string) error {
 		}
 		l.state.Shortcuts[command] = slices.Clone(keys)
 	}
+	return l.saveLocked()
+}
+
+// StartFullScreen tells whether the app opens in full screen.
+func (l *Library) StartFullScreen() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.state.StartFullScreen
+}
+
+// SetStartFullScreen makes the app open in full screen, or in a window.
+func (l *Library) SetStartFullScreen(on bool) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.state.StartFullScreen = on
 	return l.saveLocked()
 }
 

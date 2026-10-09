@@ -23,7 +23,7 @@ func main() {
 			log.Printf("library state: %v", err)
 		}
 
-		mygo.NewWindow(mygo.WindowOptions{
+		win := mygo.NewWindow(mygo.WindowOptions{
 			Title:           "Steam Library",
 			Width:           1440,
 			Height:          900,
@@ -36,6 +36,9 @@ func main() {
 			// embedded by `mygo build` otherwise (see mygo.config.ts).
 			URL: "/",
 		})
+		// The window gets back the full screen state it was closed in;
+		// the setting decides instead.
+		win.SetFullScreen(library.StartFullScreen())
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

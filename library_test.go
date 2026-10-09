@@ -202,9 +202,6 @@ func TestLibraryWithoutAccountShowsTheGamesOfThisComputer(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := l.SetShortcuts(map[string][]string{"quit": {"Ctrl+W"}, "store": nil}); err != nil {
-		t.Fatal(err)
-	}
 	if time.Since(played.LastPlayed) > time.Minute {
 		t.Errorf("Play did not update the last session: %v", played.LastPlayed)
 	}
@@ -239,6 +236,9 @@ func TestLibraryKeepsStateBetweenLaunches(t *testing.T) {
 	if err := l.SetShortcuts(map[string][]string{"quit": {"Ctrl+W"}, "store": nil}); err != nil {
 		t.Fatal(err)
 	}
+	if err := l.SetStartFullScreen(true); err != nil {
+		t.Fatal(err)
+	}
 
 	again, _ := fakeSteam(t)
 	again.client = l.client
@@ -247,6 +247,9 @@ func TestLibraryKeepsStateBetweenLaunches(t *testing.T) {
 	}
 	if got := again.Selected(); got != "30" {
 		t.Errorf("Selected() = %q, want 30", got)
+	}
+	if !again.StartFullScreen() {
+		t.Error("StartFullScreen() = false, want true")
 	}
 	// A command without keys stays without keys, rather than taking its default keys.
 	if got, want := again.Shortcuts(), map[string][]string{"quit": {"Ctrl+W"}, "store": {}}; !reflect.DeepEqual(got, want) {

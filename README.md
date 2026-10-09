@@ -57,6 +57,6 @@ go test ./...
 `1` `2` `3` games, library, store · `/` search · `I` installed games · `F11` full screen ·
 `F5` reload · `F1` settings · `Ctrl+Q` quit
 
-Settings (the gear, or `F1`) has General (full screen, reload), Steam account, Keyboard and
-Quit. Under Keyboard every action has a key and an alternate: select one and press the new
+Settings (the gear, or `F1`) has General (full screen, start in full screen, reload), Steam
+account, Keyboard and Quit. Under Keyboard every action has a key and an alternate: select one and press the new
 key (`Esc` cancels, `Delete` clears). The changes are saved in `library.json`.

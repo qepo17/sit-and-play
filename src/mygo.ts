@@ -169,12 +169,20 @@ export const Library = {
   setShortcuts(shortcuts: Record<string, string[]>): Promise<void> {
     return call("Library.SetShortcuts", shortcuts);
   },
+  /** SetStartFullScreen makes the app open in full screen, or in a window. */
+  setStartFullScreen(on: boolean): Promise<void> {
+    return call("Library.SetStartFullScreen", on);
+  },
   /**
    * Shortcuts returns the keys of the keyboard commands the user changed, by
    * command; the page knows the keys of the others.
    */
   shortcuts(): Promise<Record<string, string[]>> {
     return call("Library.Shortcuts");
+  },
+  /** StartFullScreen tells whether the app opens in full screen. */
+  startFullScreen(): Promise<boolean> {
+    return call("Library.StartFullScreen");
   },
 } as const;
 

@@ -57,11 +57,12 @@ async function boot() {
   app.innerHTML = messageView("Loading your Steam library…");
   try {
     let shortcuts: Record<string, string[]>;
-    [account, games, selectedId, shortcuts] = await Promise.all([
+    [account, games, selectedId, shortcuts, startFullScreen] = await Promise.all([
       Library.account(),
       Library.games(),
       Library.selected(),
       Library.shortcuts(),
+      Library.startFullScreen(),
     ]);
     setChanges(shortcuts);
   } catch (err) {
@@ -94,7 +95,7 @@ function render(focus?: string) {
           : route === "connect"
             ? connectView(account)
             : route === "settings"
-              ? settingsView({ tab: settingsTab, account, fullScreen, recording })
+              ? settingsView({ tab: settingsTab, account, fullScreen, startFullScreen, recording })
               : libraryView(games, lib, account);
   }
   app.dataset.route = route;
@@ -303,6 +304,18 @@ let recording: { id: Command; slot: number } | null = null;
 /** Whether the window fills the screen, as last asked. */
 let fullScreen = false;
 
+/** Whether the app opens in full screen. */
+let startFullScreen = false;
+
+function setStartFullScreen(on: boolean) {
+  startFullScreen = on;
+  app.querySelector(`[data-action="start-fullscreen"]`)?.setAttribute("aria-checked", String(on));
+  Library.setStartFullScreen(on).catch((err) => {
+    setStartFullScreen(!on);
+    showError(err);
+  });
+}
+
 /** Asks whether the window fills the screen, and turns the full screen switch to match. */
 async function showFullScreen() {
   try {
@@ -463,6 +476,9 @@ app.addEventListener("click", (e) => {
       break;
     case "reload":
       void boot();
+      break;
+    case "start-fullscreen":
+      setStartFullScreen(!startFullScreen);
       break;
   }
 });

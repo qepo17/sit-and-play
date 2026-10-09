@@ -10,6 +10,7 @@ export interface SettingsState {
   tab: SettingsTab;
   account: Account;
   fullScreen: boolean;
+  startFullScreen: boolean;
   /** The key slot waiting for a key press, if any. */
   recording: { id: Command; slot: number } | null;
 }
@@ -71,6 +72,13 @@ function general(s: SettingsState): string {
       <span class="setting-detail">Fill the whole screen with the app.${orPress("fullscreen")}</span>
     </div>
     <button type="button" class="switch" role="switch" aria-checked="${s.fullScreen}" aria-labelledby="fullscreen-label" data-action="fullscreen"><span class="switch-knob"></span></button>
+  </div>
+  <div class="setting">
+    <div class="setting-text">
+      <span class="setting-label" id="start-fullscreen-label">Start in full screen</span>
+      <span class="setting-detail">Open the app in full screen every time. When off, it opens in a window.</span>
+    </div>
+    <button type="button" class="switch" role="switch" aria-checked="${s.startFullScreen}" aria-labelledby="start-fullscreen-label" data-action="start-fullscreen"><span class="switch-knob"></span></button>
   </div>
   <div class="setting">
     <div class="setting-text">
