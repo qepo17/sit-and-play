@@ -1,4 +1,4 @@
-module steamui
+module github.com/qepo17/sit-and-play
 
 go 1.27.1
 

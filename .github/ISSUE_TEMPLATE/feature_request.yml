@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest an improvement to Sit and Play.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem do you want to solve?
+      description: Describe how this affects your use of the app.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed behavior
+      description: Describe the change and any alternatives you considered.
+    validations:
+      required: true

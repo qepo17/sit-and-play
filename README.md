@@ -1,75 +1,165 @@
-# Steam Library — Console Mode
+# Sit and Play
+
+[![CI](https://github.com/qepo17/sit-and-play/actions/workflows/ci.yml/badge.svg)](https://github.com/qepo17/sit-and-play/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ![Sit and Play: open the launcher, grab the controller, pick a game with the D-pad, press A](promo/sit-and-play.gif)
 
-A desktop app built with [MyGo](https://github.com/egoist/mygo): a Go backend and a
-TypeScript frontend (Vite) shown in the system webview.
+A controller-friendly desktop interface for your Steam library, built with
+[MyGo](https://github.com/egoist/mygo), Go, and TypeScript. Browse your games,
+open a game hub, and launch or install games through Steam.
 
-Screens: **Home** (game row), **Game hub** and **Library** (installed, collection,
-last two weeks).
+![Sit and Play home screen with demo games and keyboard controls](docs/images/home.png)
 
-It shows your real Steam library without signing in: the Steam client on this computer
-tells which games are installed and played (with playtime), the Steam store describes
-them (art, tags, price), and **Play** / **Install** hand the game to Steam
-(`steam://rungameid/…`, `steam://install/…`). On WSL it finds Steam for Windows under
-`/mnt/c` and launches it with `steam.exe`; `STEAM_DIR` overrides where Steam is looked for.
+Browser demo with sample games. The desktop app reads your local Steam library.
 
-Connecting a Steam account with a [Web API key](https://steamcommunity.com/dev/apikey)
-(Settings, or "Connect Steam account" on the home screen) is optional: it adds the
-games you own but never played on this computer, and your achievements.
+Sit and Play is an independent project and is not affiliated with Valve.
 
-## Requirements
+## What you can do
 
-- Go 1.27+ (fetched automatically by the Go toolchain) and [Bun](https://bun.sh)
-- Linux: WebKitGTK 4.1 — `sudo apt install libwebkit2gtk-4.1-0`
+- Browse installed and recently played games without entering an API key.
+- View game artwork, descriptions, prices, news, and playtime.
+- Play or install games through the Steam client.
+- Navigate with a keyboard, mouse, or controller, including Xbox, PlayStation, and Nintendo button hints.
+- Customize keyboard shortcuts and controller bindings, and start in full screen.
+- Optionally connect a Steam account to add owned games missing from the local library and view achievements.
 
-## Develop
+This is an early project. Release builds target Windows and Linux on x86-64.
+macOS and ARM builds are not part of the release pipeline.
+
+## Install
+
+Download a package from [GitHub Releases](https://github.com/qepo17/sit-and-play/releases).
+If no release is available yet, [build from source](#build-from-source).
+Keep Steam installed and signed in so Sit and Play can find your library and launch games.
+
+### Windows
+
+Run `Sit and Play Setup <version>.exe`, then open Sit and Play from the Start menu.
+The installer installs for your user and includes an uninstaller.
+The app uses [Microsoft Edge WebView2 Runtime](https://developer.microsoft.com/en-us/microsoft-edge/webview2/),
+which must be installed on your system.
+
+Release builds are currently unsigned. Windows may show a SmartScreen warning.
+
+### Linux
+
+On Debian or Ubuntu, install the downloaded package with apt so it installs the runtime dependencies too.
+Replace `<version>` with the release you downloaded.
 
 ```sh
-bun install
-bun run dev      # mygo dev: runs the app with live reload
-bun run dev:web  # the page alone in a browser, with made-up games
+sudo apt install ./sit-and-play_<version>_amd64.deb
 ```
 
-## Build
+On other distributions, install GTK 3 and WebKitGTK 4.1 through your package manager,
+then extract `sit-and-play-<version>-linux-amd64.tar.gz` and run `./sit-and-play` inside it.
+Keep the extracted files together.
+
+For a per-user install, download `install.sh` from the same release into the directory containing the archive, then run:
 
 ```sh
-bun run build    # build/<os>-<arch>/: executable, .deb, tarball with install.sh
-go test ./...
+sh install.sh sit-and-play-<version>-linux-amd64.tar.gz
 ```
 
-## Layout
+The installer adds Sit and Play to your applications menu and `~/.local/bin`.
+The `.deb` package adds the `sit-and-play` command to `/usr/bin`.
 
-- `main.go` — the window
-- `library.go` — the `Library` and `Store` services the page calls; state (the selected
-  game, and the Web API key when connected) is saved to `library.json` in the app's
-  user-data directory
-- `local.go`, `vdf.go` — reading the Steam client's files: libraries, app manifests,
-  playtime, the signed-in account
-- `steam.go` — the Steam Web API and store; `art.go` — a game's colors from its picture
-- `src/demo-games.json` — the made-up games of `bun run dev:web`
-- `src/main.ts` — routing, actions, and keyboard and controller controls
-- `src/shortcuts.ts` — the commands and their keys and controller buttons
-- `src/gamepad.ts` — reading game controllers (the Gamepad API)
-- `src/views/` — Home, Game hub, Library and Settings screens
-- `src/mygo.ts` — the typed client, generated from the Go code
+## Connect your library
+
+Sit and Play reads the Steam client's library folders, installed game manifests,
+and local play history. It asks Steam's online services for game details and artwork.
+Play and Install open `steam://` links in your Steam client.
+
+If Steam is installed in a custom directory, set `STEAM_DIR` before starting the app.
+On Linux or WSL, for example:
+
+```sh
+STEAM_DIR="/path/to/Steam" sit-and-play
+```
+
+On Windows, set the variable in PowerShell before launching the app from that shell:
+
+```powershell
+$env:STEAM_DIR = "D:\Steam"
+& "$env:LOCALAPPDATA\Programs\Sit and Play\Sit and Play.exe"
+```
+
+WSL can detect Steam for Windows under `/mnt/c` and launch it through `steam.exe`.
+Running the desktop app in WSL also needs a graphical session such as WSLg.
+
+To connect an account, open **Settings → Steam account** and enter your Steam profile
+and a [Steam Web API key](https://steamcommunity.com/dev/apikey).
+Sit and Play saves the key in `library.json` in its local user-data directory.
+The key is stored as plain text. Do not share this file or include it in bug reports.
+Disconnect the account in Settings to remove the saved key.
+
+See the [privacy policy](PRIVACY.md) for local data storage and connections to Steam.
 
 ## Controls
 
-`←` `→` browse · `Enter` play or install · `↓` game hub · `Q` `E` switch tab · `Esc` back ·
-`1` `2` `3` games, library, store · `/` search · `I` installed games · `F11` full screen ·
-`F5` reload · `F1` settings · `Ctrl+Q` quit
+These are the default bindings. Change them under **Settings → Keyboard** or **Settings → Controller**.
 
-`O` opens the options of a game. On the home screen `↑` goes to the header; elsewhere the
-arrows move between the buttons of the screen.
+| Action | Keyboard | Controller |
+| --- | --- | --- |
+| Move | Arrow keys | D-pad or left stick |
+| Select, play, or install | Enter | A, or the controller's bottom face button |
+| Back | Esc | B, or the right face button |
+| Open game options | O | X, or the left face button |
+| Search | / | Y, or the top face button |
+| Switch tabs | Q / E | LB / RB |
+| Full screen | F11 | View |
+| Settings | F1 | Menu |
+| Scroll | Mouse wheel | Right stick |
 
-A game controller drives the app too. Pressing any of its buttons switches the hints on screen
-to the controller's buttons, labeled as on an Xbox, PlayStation or Nintendo controller; a key
-or a mouse click switches them back. D-pad or left stick move · `A` select, play or install ·
-`B` back · `X` game options · `Y` search · `LB` `RB` switch tab · `View` full screen ·
-`Menu` settings · right stick scrolls. On a list such as Sort by, left and right pick the option.
+Press `↓` on a home-screen game to open its hub and `↑` to move to the header.
+Press `1`, `2`, or `3` to open Games, Library, or Store. `I` opens installed games,
+`F5` reloads, and `Ctrl+Q` quits.
 
-Settings (the gear, `F1` or `Menu`) has General (full screen, start in full screen, reload),
-Steam account, Keyboard, Controller and Quit. Under Keyboard and Controller every action has a
-key or button and an alternate: select one and press the new key or button (`Esc` cancels,
-`Delete` clears; pressing the same button keeps it). The changes are saved in `library.json`.
+When rebinding an action, `Esc` cancels and `Delete` clears the binding.
+Each action can have a primary and an alternate binding.
+
+## Build from source
+
+Install the Go version declared in [go.mod](go.mod) and
+[Bun](https://bun.sh) at the version declared in [package.json](package.json).
+Linux builds need GTK 3 and WebKitGTK 4.1 to run, but compilation does not need their development headers.
+
+```sh
+git clone https://github.com/qepo17/sit-and-play.git
+cd sit-and-play
+bun install --frozen-lockfile
+bun run dev
+```
+
+On Ubuntu or Debian, install the runtime library before opening the desktop app:
+
+```sh
+sudo apt install libwebkit2gtk-4.1-0
+```
+
+To preview the frontend with demo games in a browser, run `bun run dev:web`.
+To create production packages, run:
+
+```sh
+bun run build
+```
+
+Packages appear in `build/<os>-<arch>/`. The frontend is embedded in the executable.
+MyGo generates the TypeScript bindings as part of the build.
+
+GitHub Actions checks every PR and builds both Windows and Linux packages.
+The **Build** workflow also supports manual runs. Download its packages from the run's Artifacts section.
+
+## Contribute
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for setup, checks, and PR guidelines.
+Report bugs and suggest features through [GitHub Issues](https://github.com/qepo17/sit-and-play/issues).
+Use [SECURITY.md](SECURITY.md) to report vulnerabilities privately.
+Maintainers can follow the [release guide](docs/RELEASING.md).
+
+## License
+
+Sit and Play's code is available under the [MIT license](LICENSE).
+Bundled fonts and dependencies keep their own licenses, listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+Steam, game names, and game artwork belong to their respective owners.
