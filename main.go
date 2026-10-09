@@ -11,6 +11,7 @@ func main() {
 	library := newLibrary()
 	mygo.Bind(library)
 	mygo.Bind(&Store{launch: library.launch})
+	mygo.Bind(&App{})
 
 	mygo.App.WhenReady(func() {
 		dir, err := mygo.App.Path(mygo.PathUserData)
@@ -38,4 +39,12 @@ func main() {
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// App is the application, for the page.
+type App struct{}
+
+// Quit closes the app's windows, the store's included, and quits.
+func (*App) Quit() {
+	mygo.App.Quit()
 }

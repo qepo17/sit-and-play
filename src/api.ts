@@ -4,7 +4,7 @@ import type { Account, Game } from "./mygo";
 
 export type { Account, Game, Art, Achievement, News, Price } from "./mygo";
 
-type Api = { Library: typeof client.Library; Store: typeof client.Store };
+type Api = { Library: typeof client.Library; Store: typeof client.Store; App: typeof client.App };
 
 /**
  * A stand-in for the Go services when the page is opened in a browser tab
@@ -26,6 +26,7 @@ async function browserApi(): Promise<Api> {
   }));
   let account: Account = { connected: false, steamID: "76561190000000000", name: "Qepo", avatar: "", client: true };
   let selected = games[0]!.id;
+  let shortcuts: Record<string, string[]> = {};
   const find = (id: string) => {
     const g = games.find((g) => g.id === id);
     if (!g) throw new Error(`no game "${id}"`);
@@ -59,14 +60,21 @@ async function browserApi(): Promise<Api> {
         g.lastPlayed = new Date().toISOString();
         return structuredClone(g);
       },
+      shortcuts: async () => structuredClone(shortcuts),
+      setShortcuts: async (s) => {
+        shortcuts = structuredClone(s);
+      },
     },
     Store: {
       open: async () => web("https://store.steampowered.com/"),
       openGame: async (id) => web(`https://store.steampowered.com/app/${id}`),
       openLink: async (link) => web(link),
     },
+    App: {
+      quit: async () => window.close(),
+    },
   };
 }
 
-export const { Library, Store }: Api =
+export const { Library, Store, App }: Api =
   !isMyGo() && import.meta.env.DEV ? await browserApi() : client;

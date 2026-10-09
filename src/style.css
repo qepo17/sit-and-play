@@ -1197,6 +1197,113 @@ kbd {
   font-weight: 700;
 }
 
+/* ---- Keyboard shortcuts ---- */
+
+.keys {
+  max-width: 880px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.keys-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 560px;
+}
+
+.keys-intro p {
+  margin: 0;
+}
+
+.key-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.key-group .caps {
+  margin-bottom: 6px;
+}
+
+.key-row {
+  display: grid;
+  grid-template-columns: minmax(160px, 1fr) minmax(0, 1.4fr) 168px;
+  align-items: center;
+  gap: 16px;
+  min-height: 60px;
+  padding: 8px 10px 8px 20px;
+  border-radius: 16px;
+  background: var(--surface);
+}
+
+.key-label {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.key-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.key-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 8px 0 4px;
+  border-radius: 8px;
+  color: var(--fg-dim);
+  font-size: 16px;
+  transition: background-color 160ms ease;
+}
+
+.key-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.key-chip kbd {
+  font-size: 13px;
+}
+
+.key-none {
+  font-size: 14px;
+  color: var(--fg-dim);
+}
+
+.key-tools {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.key-button {
+  height: 40px;
+  padding: 0 18px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.key-button:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.key-recording,
+.key-recording:hover {
+  background: #fff;
+  color: var(--ink);
+}
+
 /* ---- Menu and toast ---- */
 
 .menu {
@@ -1229,6 +1336,18 @@ kbd {
   text-align: left;
   font-size: 15px;
   font-weight: 700;
+}
+
+.menu button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.menu kbd {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-muted);
 }
 
 .menu button:hover,

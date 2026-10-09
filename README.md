@@ -47,10 +47,15 @@ go test ./...
 - `steam.go` — the Steam Web API and store; `art.go` — a game's colors from its picture
 - `src/demo-games.json` — the made-up games of `bun run dev:web`
 - `src/main.ts` — routing, actions and keyboard controls
-- `src/views/` — Home, Game hub and Library screens
+- `src/shortcuts.ts` — the keyboard commands and their keys
+- `src/views/` — Home, Game hub, Library and Keyboard shortcuts screens
 - `src/mygo.ts` — the typed client, generated from the Go code
 
 ## Controls
 
 `←` `→` browse · `Enter` play or install · `↓` game hub · `Q` `E` switch tab · `Esc` back ·
-`F11` full screen
+`1` `2` `3` games, library, store · `/` search · `I` installed games · `F11` full screen ·
+`F5` reload · `?` shortcuts · `Ctrl+Q` quit
+
+Every key can be changed under Settings → Keyboard shortcuts (or `?`); the changes are saved
+in `library.json`.
