@@ -3,6 +3,8 @@
 [![CI](https://github.com/qepo17/sit-and-play/actions/workflows/ci.yml/badge.svg)](https://github.com/qepo17/sit-and-play/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+![Sit and Play: open the launcher, grab the controller, pick a game with the D-pad, press A](promo/sit-and-play.gif)
+
 A controller-friendly desktop interface for your Steam library, built with
 [MyGo](https://github.com/egoist/mygo), Go, and TypeScript. Browse your games,
 open a game hub, and launch or install games through Steam.
