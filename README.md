@@ -91,6 +91,8 @@ Sit and Play saves the key in `library.json` in its local user-data directory.
 The key is stored as plain text. Do not share this file or include it in bug reports.
 Disconnect the account in Settings to remove the saved key.
 
+See the [privacy policy](PRIVACY.md) for local data storage and connections to Steam.
+
 ## Controls
 
 These are the default bindings. Change them under **Settings → Keyboard** or **Settings → Controller**.
