@@ -28,7 +28,7 @@ import { settingsView, type SettingsTab } from "./views/settings";
 
 type Route = "home" | "hub" | "library" | "connect" | "settings";
 
-/** How many of the most recently played games the home row shows. */
+/** How many of the most recently played installed games the home row shows. */
 const ROW = 15;
 
 const app = document.querySelector<HTMLElement>("#app")!;
@@ -44,11 +44,20 @@ const selected = () => games.find((g) => g.id === selectedId) ?? games[0]!;
 /** Whether the screen shows games, rather than a message when there are none. */
 const showsGames = () => route === "home" || route === "hub" || route === "library";
 
-/** The home row: the latest games played, and the selected one. */
+/** The home row: the latest installed games played, and the selected one. */
 function homeGames(): Game[] {
-  const row = games.slice(0, ROW);
+  const row = games.filter((g) => g.installed).slice(0, ROW);
   const g = selected();
-  return row.includes(g) ? row : [g, ...row.slice(0, ROW - 1)];
+  return !g.installed || row.includes(g) ? row : [g, ...row.slice(0, ROW - 1)];
+}
+
+/** Moves the selection to an installed game, as the home screen shows only those. */
+function selectInstalled() {
+  if (selected().installed) return;
+  const g = games.find((g) => g.installed);
+  if (!g) return;
+  selectedId = g.id;
+  Library.select(g.id).catch(showError);
 }
 
 function replaceGame(g: Game) {
@@ -90,8 +99,11 @@ async function boot() {
 
 function render(focus?: string) {
   closeMenu();
+  if (route === "home") selectInstalled();
   if (!games.length && showsGames()) {
     app.innerHTML = emptyView();
+  } else if (route === "home" && !homeGames().length) {
+    app.innerHTML = noneInstalledView();
   } else {
     app.innerHTML =
       route === "home"
@@ -124,8 +136,21 @@ function emptyView(): string {
       );
 }
 
+/** The home screen when none of the games are installed. */
+function noneInstalledView(): string {
+  const collection = `<button type="button" class="play" data-action="collection">Browse your games</button>`;
+  const store = `<button type="button" class="pill-link" data-action="store">Open Steam store</button>`;
+  return messageView(
+    "No games installed",
+    account.client
+      ? "Games you install in Steam show up here."
+      : "Install Steam on this computer to play your games here.",
+    collection + store,
+  );
+}
+
 function defaultFocus(): HTMLElement | null {
-  if (!games.length && showsGames()) return app.querySelector(".actions button");
+  if (app.querySelector(".message")) return app.querySelector(".message .actions button");
   if (route === "home") return app.querySelector(".tile-selected");
   if (route === "hub") return app.querySelector(".play");
   if (route === "connect") return app.querySelector("#connect-key");
@@ -453,6 +478,9 @@ app.addEventListener("click", (e) => {
     case "downloads":
       openLibrary("installed");
       break;
+    case "collection":
+      openLibrary("collection");
+      break;
     case "settings":
       navigate("settings");
       break;
@@ -488,7 +516,8 @@ app.addEventListener("click", (e) => {
       render(`[data-tab="${lib.tab}"]`);
       break;
     case "open":
-      open(id, "home");
+      // Home shows only the installed games; the hub installs the others.
+      open(id, games.find((g) => g.id === id)?.installed ? "home" : "hub");
       break;
     case "hub":
       open(id, "hub");
