@@ -165,8 +165,8 @@ export const Library = {
 } as const;
 
 /**
- * Store opens pages of the Steam store and community in the default
- * browser.
+ * Store shows the Steam store in a window of the app, and other pages of
+ * Steam, such as news, in the default browser.
  */
 export const Store = {
   /** Open shows the Steam store. */

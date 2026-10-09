@@ -10,7 +10,7 @@ import (
 func main() {
 	library := newLibrary()
 	mygo.Bind(library)
-	mygo.Bind(Store{})
+	mygo.Bind(&Store{launch: library.launch})
 
 	mygo.App.WhenReady(func() {
 		dir, err := mygo.App.Path(mygo.PathUserData)

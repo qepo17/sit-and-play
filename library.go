@@ -641,25 +641,70 @@ func (l *Library) Play(id string) (Game, error) {
 	return l.games[i], l.saveLocked()
 }
 
-// Store opens pages of the Steam store and community in the default
-// browser.
-type Store struct{}
+// Store shows the Steam store in a window of the app, and other pages of
+// Steam, such as news, in the default browser.
+type Store struct {
+	launch func(url string) error // opens steam:// URLs
+
+	mu  sync.Mutex
+	win *mygo.Window // the store window; nil until first shown
+}
 
 // Open shows the Steam store.
-func (Store) Open() error {
-	return mygo.Shell.OpenExternal("https://store.steampowered.com/")
+func (s *Store) Open() error {
+	return s.show("https://store.steampowered.com/")
 }
 
 // OpenGame shows the store page of the game with the given ID.
-func (Store) OpenGame(id string) error {
+func (s *Store) OpenGame(id string) error {
 	if _, err := strconv.Atoi(id); err != nil {
 		return fmt.Errorf("no game %q", id)
 	}
-	return mygo.Shell.OpenExternal("https://store.steampowered.com/app/" + id)
+	return s.show("https://store.steampowered.com/app/" + id)
+}
+
+// show loads a store page in the store window, opening the window if it
+// isn't open.
+func (s *Store) show(page string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.win != nil && !s.win.IsDestroyed() {
+		if err := s.win.Page().LoadURL(page); err != nil {
+			return err
+		}
+		if s.win.IsMinimized() {
+			s.win.Restore()
+		}
+		s.win.Focus()
+		return nil
+	}
+	s.win = mygo.NewWindow(mygo.WindowOptions{
+		Title:           "Steam Store",
+		URL:             page,
+		Width:           1280,
+		Height:          860,
+		MinWidth:        800,
+		MinHeight:       600,
+		BackgroundColor: "#1B2838", // the store's background
+		StateKey:        "store",
+	})
+	// The store's buttons that install or play a game are steam:// links,
+	// for the Steam client.
+	s.win.Page().OnWillNavigate(func(e *mygo.NavigateEvent) {
+		if u, err := url.Parse(e.URL); err == nil && u.Scheme == "steam" {
+			e.PreventDefault()
+			go func() {
+				if err := s.launch(e.URL); err != nil {
+					log.Printf("store: %v", err)
+				}
+			}()
+		}
+	})
+	return nil
 }
 
 // OpenLink shows a web page, such as a news item.
-func (Store) OpenLink(link string) error {
+func (*Store) OpenLink(link string) error {
 	if u, err := url.Parse(link); err != nil || u.Scheme != "https" {
 		return fmt.Errorf("%q is not a web page", link)
 	}
