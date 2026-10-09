@@ -9,8 +9,6 @@ A controller-friendly desktop interface for your Steam library, built with
 [MyGo](https://github.com/egoist/mygo), Go, and TypeScript. Browse your games,
 open a game hub, and launch or install games through Steam.
 
-![Sit and Play home screen with demo games and keyboard controls](docs/images/home.png)
-
 Browser demo with sample games. The desktop app reads your local Steam library.
 
 Sit and Play is an independent project and is not affiliated with Valve.
