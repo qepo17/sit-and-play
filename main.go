@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"path/filepath"
 
@@ -43,6 +44,12 @@ func main() {
 
 // App is the application, for the page.
 type App struct{}
+
+// FullScreen tells whether the window of the page fills the screen.
+func (*App) FullScreen(ctx context.Context) bool {
+	w := mygo.CallerWindow(ctx)
+	return w != nil && w.IsFullScreen()
+}
 
 // Quit closes the app's windows, the store's included, and quits.
 func (*App) Quit() {

@@ -87,15 +87,28 @@ function setKeys(id: Command, keys: string[]) {
   else changed[id] = keys;
 }
 
+/** How many keys a command can have: a key and an alternate. */
+export const SLOTS = 2;
+
 /**
- * Gives a command another key. A key runs one command, so the command that
- * had the key loses it; addKey returns that command.
+ * Sets the key in a slot of a command, the first slot free if the slot is
+ * past its keys. A key runs one command, so the command that had the key
+ * loses it; setKey returns that command.
  */
-export function addKey(id: Command, key: string): Command | undefined {
+export function setKey(id: Command, slot: number, key: string): Command | undefined {
+  const keys = [...keysOf(id)];
+  const at = keys.indexOf(key);
+  if (at >= 0) {
+    // The command's other key: the two swap.
+    if (slot < keys.length) [keys[at], keys[slot]] = [keys[slot]!, keys[at]!];
+    setKeys(id, keys);
+    return undefined;
+  }
   const previous = commandOf(key);
-  if (previous === id) return undefined;
   if (previous) removeKey(previous, key);
-  setKeys(id, [...keysOf(id), key]);
+  if (slot < keys.length) keys[slot] = key;
+  else keys.push(key);
+  setKeys(id, keys.slice(0, SLOTS));
   return previous;
 }
 

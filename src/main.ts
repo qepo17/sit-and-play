@@ -3,15 +3,16 @@ import { currentWindow, isMyGo } from "mygo-runtime";
 import { App, Library, Store, type Account, type Game } from "./api";
 import { clock } from "./format";
 import {
-  addKey,
   changes,
   commandOf,
   keyName,
   keyOf,
+  keysOf,
   labelOf,
   removeKey,
   resetKeys,
   setChanges,
+  setKey,
   typesText,
   type Command,
 } from "./shortcuts";
@@ -20,7 +21,7 @@ import { connectView, messageView } from "./views/connect";
 import { gameRow, hints, homeView, selectedGame, stats } from "./views/home";
 import { hubDetails, hubView } from "./views/hub";
 import { libraryResults, libraryView, type LibraryState, type LibraryTab, type LibrarySort } from "./views/library";
-import { settingsView } from "./views/settings";
+import { settingsView, type SettingsTab } from "./views/settings";
 
 type Route = "home" | "hub" | "library" | "connect" | "settings";
 
@@ -93,7 +94,7 @@ function render(focus?: string) {
           : route === "connect"
             ? connectView(account)
             : route === "settings"
-              ? settingsView(account, recording ?? undefined)
+              ? settingsView({ tab: settingsTab, account, fullScreen, recording })
               : libraryView(games, lib, account);
   }
   app.dataset.route = route;
@@ -121,13 +122,14 @@ function defaultFocus(): HTMLElement | null {
   if (route === "home") return app.querySelector(".tile-selected");
   if (route === "hub") return app.querySelector(".play");
   if (route === "connect") return app.querySelector("#connect-key");
-  if (route === "settings") return app.querySelector(".settings .key-button");
+  if (route === "settings") return app.querySelector(`[data-settings-tab="${settingsTab}"]`);
   return app.querySelector(".lib-card, .history .row");
 }
 
 function navigate(to: Route, focus?: string) {
   route = to;
   recording = null;
+  if (to === "settings") void showFullScreen();
   window.scrollTo(0, 0);
   render(focus);
 }
@@ -246,7 +248,7 @@ function quit() {
 }
 
 function toggleFullScreen() {
-  if (isMyGo()) void currentWindow.toggleFullScreen();
+  if (isMyGo()) currentWindow.toggleFullScreen().then(showFullScreen, showError);
   else if (document.fullscreenElement) void document.exitFullscreen();
   else void document.documentElement.requestFullscreen();
 }
@@ -291,16 +293,34 @@ async function disconnect() {
   await boot();
 }
 
-// ---- Shortcuts ----
+// ---- Settings ----
 
-/** The command whose new key the settings screen waits for. */
-let recording: Command | null = null;
+let settingsTab: SettingsTab = "general";
+
+/** The key slot whose new key the settings screen waits for. */
+let recording: { id: Command; slot: number } | null = null;
+
+/** Whether the window fills the screen, as last asked. */
+let fullScreen = false;
+
+/** Asks whether the window fills the screen, and turns the full screen switch to match. */
+async function showFullScreen() {
+  try {
+    fullScreen = await App.fullScreen();
+  } catch {
+    return;
+  }
+  app.querySelector(`.switch[data-action="fullscreen"]`)?.setAttribute("aria-checked", String(fullScreen));
+}
+
+window.addEventListener("resize", () => void showFullScreen());
+document.addEventListener("fullscreenchange", () => void showFullScreen());
 
 function saveShortcuts() {
   Library.setShortcuts(changes()).catch(showError);
 }
 
-const addButton = (id: Command) => `[data-action="key-add"][data-command="${id}"]`;
+const slotButton = (id: Command, slot: number) => `[data-action="key-slot"][data-command="${id}"][data-slot="${slot}"]`;
 
 /** Takes the key pressed while recording, before the keyboard commands run. */
 window.addEventListener(
@@ -309,47 +329,59 @@ window.addEventListener(
     if (!recording) return;
     const key = keyOf(e);
     if (!key) return; // a modifier, waiting for the key
-    const id = recording;
+    const { id, slot } = recording;
     recording = null;
     if (key === "Tab" || key === "Shift+Tab") {
-      render(addButton(id));
-      return; // moves the focus from the Add button
+      render(slotButton(id, slot));
+      return; // moves the focus from the slot
     }
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (key !== "Escape") {
-      const from = addKey(id, key);
+    if (key === "Delete") {
+      const k = keysOf(id)[slot];
+      if (k) {
+        removeKey(id, k);
+        saveShortcuts();
+        toast(`${labelOf(id)}: ${keyName(k)} removed`);
+      }
+    } else if (key !== "Escape") {
+      const from = setKey(id, slot, key);
       saveShortcuts();
-      toast(from ? `${keyName(key)} moved from ${labelOf(from)} to ${labelOf(id)}` : `${keyName(key)}: ${labelOf(id)}`);
+      toast(from ? `${keyName(key)} now runs ${labelOf(id)}, not ${labelOf(from)}` : `${labelOf(id)}: ${keyName(key)}`);
     }
-    render(addButton(id));
+    render(slotButton(id, Math.min(slot, keysOf(id).length)));
   },
   true,
 );
 
-function shortcutAction(action: string, id: Command, key: string) {
+function settingsAction(el: HTMLElement) {
   const was = recording;
   recording = null;
-  switch (action) {
-    case "key-add":
-      if (was !== id) recording = id;
-      render(addButton(id));
-      return;
-    case "key-remove":
-      removeKey(id, key);
+  const id = el.dataset.command as Command;
+  switch (el.dataset.action) {
+    case "settings-tab":
+      settingsTab = el.dataset.settingsTab as SettingsTab;
+      render(`[data-settings-tab="${settingsTab}"]`);
       break;
+    case "key-slot": {
+      const slot = Number(el.dataset.slot);
+      if (was?.id !== id || was.slot !== slot) recording = { id, slot };
+      render(slotButton(id, slot));
+      break;
+    }
     case "key-reset":
       resetKeys(id);
+      saveShortcuts();
+      toast(`${labelOf(id)}: default keys`);
+      render(slotButton(id, 0));
       break;
     case "keys-reset-all":
       resetKeys();
       saveShortcuts();
-      toast("Shortcuts reset");
+      toast("Default keys restored");
       render(`[data-action="keys-reset-all"]`);
-      return;
+      break;
   }
-  saveShortcuts();
-  render(addButton(id));
 }
 
 app.addEventListener("click", (e) => {
@@ -423,11 +455,14 @@ app.addEventListener("click", (e) => {
     case "hub":
       open(id, "hub");
       break;
-    case "key-add":
-    case "key-remove":
+    case "settings-tab":
+    case "key-slot":
     case "key-reset":
     case "keys-reset-all":
-      shortcutAction(el.dataset.action, el.dataset.command as Command, el.dataset.key ?? "");
+      settingsAction(el);
+      break;
+    case "reload":
+      void boot();
       break;
   }
 });
@@ -493,9 +528,9 @@ document.addEventListener("pointerdown", (e) => {
   if (menu && !menu.el.contains(e.target as Node) && !menu.anchor.contains(e.target as Node)) closeMenu(false);
   // Pressing a button of the screen stops recording when it is clicked.
   if (recording && !(e.target as Element).closest("[data-action]")) {
-    const id = recording;
+    const { id, slot } = recording;
     recording = null;
-    render(addButton(id));
+    render(slotButton(id, slot));
   }
 });
 
@@ -533,6 +568,37 @@ function gridMove(direction: Direction): boolean {
   }
   cards[Math.min(next, cards.length - 1)]?.focus();
   return true;
+}
+
+/** Focuses the nearest button in a direction; a section of the sidebar shows as it gets the focus. */
+function settingsMove(direction: Direction) {
+  const from = document.activeElement as HTMLElement;
+  const buttons = [...app.querySelectorAll<HTMLElement>(".settings button")];
+  if (!buttons.includes(from)) return buttons[0]?.focus();
+  const a = from.getBoundingClientRect();
+  const [ax, ay] = [a.left + a.width / 2, a.top + a.height / 2];
+  let best: HTMLElement | undefined;
+  let bestScore = Infinity;
+  for (const b of buttons) {
+    if (b === from) continue;
+    const r = b.getBoundingClientRect();
+    const dx = r.left + r.width / 2 - ax;
+    const dy = r.top + r.height / 2 - ay;
+    // How far along the direction, and how far off it.
+    const [along, off] = direction === "left" ? [-dx, dy] : direction === "right" ? [dx, dy] : direction === "up" ? [-dy, dx] : [dy, dx];
+    if (along <= 4) continue;
+    const score = along + Math.abs(off) * 3;
+    if (score < bestScore) [best, bestScore] = [b, score];
+  }
+  if (!best) return;
+  const tab = best.dataset.settingsTab as SettingsTab | undefined;
+  if (tab && from.dataset.settingsTab && tab !== settingsTab) {
+    settingsTab = tab;
+    render(`[data-settings-tab="${tab}"]`);
+  } else {
+    best.focus();
+    best.scrollIntoView({ block: "nearest" });
+  }
 }
 
 /** Runs a command that works on every screen; false for the others. */
@@ -634,12 +700,14 @@ document.addEventListener("keydown", (e) => {
       if (command === "back") navigate("home");
       else if (command !== "confirm" || !confirmButton()) return;
       break;
-    case "settings":
-      if (command === "back") navigate("home");
-      else if (isDirection(command))
-        moveFocus([...app.querySelectorAll<HTMLElement>("button")], command === "left" || command === "up" ? -1 : 1);
+    case "settings": {
+      const inPane = target.closest(".settings-pane");
+      if (command === "back" && inPane) app.querySelector<HTMLElement>(`[data-settings-tab="${settingsTab}"]`)?.focus();
+      else if (command === "back") navigate("home");
+      else if (isDirection(command)) settingsMove(command);
       else if (command !== "confirm" || !confirmButton()) return;
       break;
+    }
     case "library":
       if (command === "back") navigate("home");
       else if (isDirection(command) ? !gridMove(command) : command !== "confirm" || !confirmButton()) return;

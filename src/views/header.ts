@@ -27,7 +27,7 @@ export function header(current: "home" | "library", account?: Account): string {
 </header>`;
 }
 
-function avatar(a: Account): string {
+export function avatar(a: Account): string {
   const name = a.name || "Steam";
   return `<span class="avatar" role="img" aria-label="Profile: ${esc(name)}">${
     a.avatar ? `<img src="${esc(a.avatar)}" alt="" onerror="this.remove()">` : ""

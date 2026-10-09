@@ -71,6 +71,7 @@ async function browserApi(): Promise<Api> {
       openLink: async (link) => web(link),
     },
     App: {
+      fullScreen: async () => document.fullscreenElement !== null,
       quit: async () => window.close(),
     },
   };

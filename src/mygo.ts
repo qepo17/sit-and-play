@@ -199,6 +199,10 @@ export const Store = {
 
 /** App is the application, for the page. */
 export const App = {
+  /** FullScreen tells whether the window of the page fills the screen. */
+  fullScreen(): Promise<boolean> {
+    return call("App.FullScreen");
+  },
   /** Quit closes the app's windows, the store's included, and quits. */
   quit(): Promise<void> {
     return call("App.Quit");
