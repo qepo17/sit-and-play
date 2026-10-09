@@ -2,7 +2,7 @@
 
 Updated October 9, 2026.
 
-Steam Library reads your Steam account and game information to display your library. We do not upload your data to our own servers. The app has no analytics or keystroke recording.
+Sit and Play reads your Steam account and game information to display your library. We do not upload your data to our own servers. The app has no analytics or keystroke recording.
 
 Your Steam ID, settings, selected game, and last game launch times are saved on your device. If you connect an account, your API key is also saved locally in an unencrypted file.
 

@@ -3,3 +3,10 @@ node_modules/
 /build/
 /.mygo/
 mygo_windows_*.syso
+.env
+.env.*
+!.env.example
+/library.json
+*.pfx
+*.p12
+mygo-update.key
