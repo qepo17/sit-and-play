@@ -16,6 +16,8 @@ Connecting a Steam account with a [Web API key](https://steamcommunity.com/dev/a
 (Settings, or "Connect Steam account" on the home screen) is optional: it adds the
 games you own but never played on this computer, and your achievements.
 
+See the [privacy policy](PRIVACY.md) for local data storage and connections to Steam.
+
 ## Requirements
 
 - Go 1.27+ (fetched automatically by the Go toolchain) and [Bun](https://bun.sh)
