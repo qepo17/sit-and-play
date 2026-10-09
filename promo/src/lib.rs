@@ -178,12 +178,25 @@ fn backdrop<'a>(art: [&'a str; 3], rot: f32, cx: f32) -> Svgr<'a> {
     </g>)
 }
 
-/// The app icon: a rounded square with a ring, `size` px wide, top-left at the origin.
+/// The app icon (`resources/icon.svg`): the selected cover of the home row, ready to play.
+/// `size` px wide, top-left at the origin; its gradients are in the video's `<defs>`.
 fn app_icon<'a>(size: f32) -> Svgr<'a> {
     let s = size / 1024.0;
     fframes::svgr!(<g transform={format!("scale({s})")}>
-        <rect x="100" y="100" width="824" height="824" rx="190" fill="url(#icon-fill)" />
-        <circle cx="512" cy="512" r="230" fill="none" stroke="#ffffff" stroke-width="96" />
+        <g clip-path="url(#icon-base)">
+            <rect x="100" y="100" width="824" height="824" fill="url(#icon-ink)" />
+            <rect x="100" y="100" width="824" height="824" fill="url(#icon-glow)" />
+            <g opacity="0.55">
+                <rect x="62" y="352" width="220" height="330" rx="34" fill="url(#icon-left)" />
+                <rect x="742" y="352" width="220" height="330" rx="34" fill="url(#icon-right)" />
+            </g>
+            <g filter="url(#icon-shadow)">
+                <rect x="324" y="228" width="376" height="560" rx="72" fill="none" stroke="#ffffff" stroke-opacity="0.2" stroke-width="16" />
+                <rect x="348" y="252" width="328" height="512" rx="52" fill="url(#icon-selected)" stroke="#ffffff" stroke-width="12" />
+            </g>
+            <circle cx="450" cy="380" r="190" fill="url(#icon-orb)" clip-path="url(#icon-tile)" />
+            <path d="M466 418 Q466 392 489 405 L605 485 Q626 499 605 514 L489 594 Q466 607 466 582 Z" fill="#ffffff" />
+        </g>
     </g>)
 }
 
@@ -243,10 +256,43 @@ impl Video for SitAndPlayPromoVideo<'_> {
         fframes::svgr!(
             <svg xmlns="http://www.w3.org/2000/svg" width={WIDTH} height={HEIGHT} viewBox="0 0 1920 1080">
                 <defs>
-                    <linearGradient id="icon-fill" x1="0" y1="0" x2="1" y2="1">
-                        <stop offset="0" stop-color="#4A7CF7" />
-                        <stop offset="1" stop-color="#9B5CF5" />
+                    <clipPath id="icon-base">
+                        <rect x="100" y="100" width="824" height="824" rx="184" />
+                    </clipPath>
+                    <linearGradient id="icon-ink" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0" stop-color="#1c2438" />
+                        <stop offset="1" stop-color="#0b0e14" />
                     </linearGradient>
+                    <radialGradient id="icon-glow" cx="512" cy="500" r="420" gradientUnits="userSpaceOnUse">
+                        <stop offset="0" stop-color="#4c7dff" stop-opacity="0.55" />
+                        <stop offset="1" stop-color="#4c7dff" stop-opacity="0" />
+                    </radialGradient>
+                    <linearGradient id="icon-selected" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stop-color="#4c7dff" />
+                        <stop offset="1" stop-color="#9b5cf6" />
+                    </linearGradient>
+                    <linearGradient id="icon-left" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stop-color="#ff8a4c" />
+                        <stop offset="1" stop-color="#ff3d77" />
+                    </linearGradient>
+                    <linearGradient id="icon-right" x1="0" y1="0" x2="1" y2="1">
+                        <stop offset="0" stop-color="#2dd4bf" />
+                        <stop offset="1" stop-color="#2290ff" />
+                    </linearGradient>
+                    <radialGradient id="icon-orb" cx="0.3" cy="0.3" r="0.7">
+                        <stop offset="0" stop-color="#ffffff" stop-opacity="0.45" />
+                        <stop offset="1" stop-color="#ffffff" stop-opacity="0" />
+                    </radialGradient>
+                    <clipPath id="icon-tile">
+                        <rect x="354" y="258" width="316" height="500" rx="46" />
+                    </clipPath>
+                    <radialGradient id="outro-glow">
+                        <stop offset="0" stop-color="#4c7dff" stop-opacity="0.5" />
+                        <stop offset="1" stop-color="#4c7dff" stop-opacity="0" />
+                    </radialGradient>
+                    <filter id="icon-shadow" x="-30%" y="-30%" width="160%" height="160%">
+                        <feDropShadow dx="0" dy="28" stdDeviation="30" flood-color="#000000" flood-opacity="0.55" />
+                    </filter>
                 </defs>
                 <rect width="1920" height="1080" fill={NIGHT} />
                 {ctx.render_scenes(&frame)}
@@ -668,6 +714,7 @@ impl Scene for Outro {
                 <circle cx="0" cy="0" r="260" fill="none" stroke="#24323C" stroke-width="2" />
                 <circle cx="0" cy="0" r="380" fill="none" stroke="#1A262E" stroke-width="2" />
             </g>
+            <circle cx="960" cy={logo_y} r="240" fill="url(#outro-glow)" opacity={appear(&frame, OUTRO_LOGO)} />
             <g opacity={appear(&frame, OUTRO_LOGO)} transform={format!("translate(960 {logo_y}) scale({logo_scale}) translate(-80 -80)")}>
                 {app_icon(160.0)}
             </g>

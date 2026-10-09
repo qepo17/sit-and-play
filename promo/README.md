@@ -26,7 +26,7 @@ cargo run --release -- strip Demo -n 12
 cargo run --release -- audio analyze --waveform w.png
 cargo run --release -- render -o sit-and-play-promo.mp4
 # the GIF in the project README: 960 px, 15 fps
-ffmpeg -i sit-and-play-promo.mp4 -vf "fps=15,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" -loop 0 sit-and-play.gif
+ffmpeg -i sit-and-play-promo.mp4 -vf "fps=15,scale=960:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=256:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=3:diff_mode=rectangle" -loop 0 sit-and-play.gif
 ```
 
 `media/` is embedded at compile time: after changing a file there, `touch src/lib.rs` so
