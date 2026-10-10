@@ -6,6 +6,8 @@ Write them as plain lines and `- ` list items, for players rather than developer
 
 ## Unreleased
 
+## [0.0.3] - 2026-10-10
+
 ### Added
 
 - Sit and Play updates itself. New versions download in the background and start the next time you open the app.
