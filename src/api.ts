@@ -1,10 +1,17 @@
 import { isMyGo } from "mygo-runtime";
 import * as client from "./mygo";
-import type { Account, Game } from "./mygo";
+import type { Account, Game, UpdateStatus } from "./mygo";
 
-export type { Account, Game, Art, Achievement, News, Price } from "./mygo";
+export type { Account, Game, Art, Achievement, News, Price, UpdateStatus } from "./mygo";
 
-type Api = { Library: typeof client.Library; Store: typeof client.Store; App: typeof client.App };
+type Api = {
+  Library: typeof client.Library;
+  Store: typeof client.Store;
+  App: typeof client.App;
+  Updates: typeof client.Updates;
+  /** Calls a function whenever updating gets further. */
+  onUpdate: (listener: (s: UpdateStatus) => void) => void;
+};
 
 /**
  * A stand-in for the Go services when the page is opened in a browser tab
@@ -84,8 +91,16 @@ async function browserApi(): Promise<Api> {
       fullScreen: async () => document.fullscreenElement !== null,
       quit: async () => window.close(),
     },
+    Updates: {
+      status: async () => ({ state: "unsupported", current: "dev", progress: 0 }),
+      check: async () => {},
+      restart: async () => {},
+    },
+    onUpdate: () => {},
   };
 }
 
-export const { Library, Store, App }: Api =
-  !isMyGo() && import.meta.env.DEV ? await browserApi() : client;
+export const { Library, Store, App, Updates, onUpdate }: Api =
+  !isMyGo() && import.meta.env.DEV
+    ? await browserApi()
+    : { ...client, onUpdate: (listener) => void client.events.update.on(listener) };

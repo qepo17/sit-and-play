@@ -1,6 +1,6 @@
 import "./style.css";
 import { currentWindow, isMyGo } from "mygo-runtime";
-import { App, Library, Store, type Account, type Game } from "./api";
+import { App, Library, onUpdate, Store, Updates, type Account, type Game, type UpdateStatus } from "./api";
 import { clock } from "./format";
 import { controllers, startGamepads, type Button, type Direction } from "./gamepad";
 import {
@@ -24,7 +24,7 @@ import { connectView, messageView } from "./views/connect";
 import { gameRow, hints, homeView, selectedGame, stats } from "./views/home";
 import { hubDetails, hubView } from "./views/hub";
 import { libraryResults, libraryView, type LibraryState, type LibraryTab, type LibrarySort } from "./views/library";
-import { settingsView, type SettingsTab } from "./views/settings";
+import { settingsView, updateSetting, type SettingsTab } from "./views/settings";
 
 type Route = "home" | "hub" | "library" | "connect" | "settings";
 
@@ -113,7 +113,7 @@ function render(focus?: string) {
           : route === "connect"
             ? connectView(account)
             : route === "settings"
-              ? settingsView({ tab: settingsTab, account, fullScreen, startFullScreen, recording, controllers: controllers() })
+              ? settingsView({ tab: settingsTab, account, fullScreen, startFullScreen, update, recording, controllers: controllers() })
               : libraryView(games, lib, account);
   }
   app.dataset.route = route;
@@ -360,6 +360,25 @@ async function showFullScreen() {
 window.addEventListener("resize", () => void showFullScreen());
 document.addEventListener("fullscreenchange", () => void showFullScreen());
 
+const releases = "https://github.com/qepo17/sit-and-play/releases";
+
+/** How far the app got in updating itself, which the Go side checks for in the background. */
+let update: UpdateStatus = { state: "unsupported", current: "", progress: 0 };
+
+/** Shows how far updating got, in the settings without moving the focus. */
+function showUpdate(s: UpdateStatus) {
+  if (s.state === "ready" && update.state !== "ready") toast(`Version ${s.version} is installed. Restart from Settings to use it.`);
+  update = s;
+  const row = app.querySelector(".update-setting");
+  if (!row) return;
+  const focused = row.contains(document.activeElement);
+  row.outerHTML = updateSetting(s);
+  if (focused) app.querySelector<HTMLElement>(".update-setting button")?.focus({ preventScroll: true });
+}
+
+onUpdate(showUpdate);
+Updates.status().then(showUpdate, () => {});
+
 function saveBindings(device: Device) {
   (device === "keyboard"
     ? Library.setShortcuts(changes("keyboard"))
@@ -533,6 +552,15 @@ app.addEventListener("click", (e) => {
       break;
     case "start-fullscreen":
       setStartFullScreen(!startFullScreen);
+      break;
+    case "update-check":
+      Updates.check().catch(showError);
+      break;
+    case "update-restart":
+      Updates.restart().catch(showError);
+      break;
+    case "releases":
+      Store.openLink(releases).catch(showError);
       break;
   }
 });

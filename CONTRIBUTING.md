@@ -40,6 +40,10 @@ It does not exercise Steam discovery, native window behavior, or game launching.
 Keep PRs focused on one problem. Follow the existing Go and TypeScript conventions.
 Keep slow network and file operations out of UI rendering and preserve keyboard and controller navigation.
 
+Add changes that players notice to the `## Unreleased` section of `CHANGELOG.md`.
+Write them as plain `- ` list items under `### Added`, `### Changed`, or `### Fixed`.
+The app shows these notes when it updates, without other Markdown formatting.
+
 After changing a bound Go service, run `bun run generate` and commit any changes to `src/mygo.ts`.
 Do not edit that generated file by hand.
 

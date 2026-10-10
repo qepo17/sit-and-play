@@ -20,6 +20,7 @@ Sit and Play is an independent project and is not affiliated with Valve.
 - Play or install games through the Steam client.
 - Navigate with a keyboard, mouse, or controller, including Xbox, PlayStation, and Nintendo button hints.
 - Customize keyboard shortcuts and controller bindings, and start in full screen.
+- Get new versions automatically. The app downloads and installs them in the background.
 - Optionally connect a Steam account to add owned games missing from the local library and view achievements.
 
 This is an early project. Release builds target Windows and Linux on x86-64.
@@ -30,6 +31,11 @@ macOS and ARM builds are not part of the release pipeline.
 Download a package from [GitHub Releases](https://github.com/qepo17/sit-and-play/releases).
 If no release is available yet, [build from source](#build-from-source).
 Keep Steam installed and signed in so Sit and Play can find your library and launch games.
+
+The Windows installer, the Linux archive, and `install.sh` installs update themselves.
+New versions install in the background and start the next time you open the app.
+To start one right away, open **Settings → General** and select **Restart**.
+The Debian package doesn't update itself. Install the new `.deb` with apt instead.
 
 ### Windows
 
