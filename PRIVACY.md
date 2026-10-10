@@ -8,6 +8,8 @@ Your Steam ID, settings, selected game, and last game launch times are saved on 
 
 The app connects directly to Steam and its image providers, including without a connected account. These providers receive your IP address and requested game IDs. Connecting an account also sends your Steam ID and API key to Steam over HTTPS.
 
+Copies of the app that update themselves check GitHub Releases for a new version a few seconds after they start, then once a day. GitHub receives your IP address, the app's version, and your operating system and processor type. Copies installed with the Debian package don't check.
+
 The in-app store and external websites follow their providers' privacy policies. They may use cookies and site storage. Browser data may remain on your device. The app can also produce local error logs, which it does not upload to us.
 
 Disconnect removes the saved API key and connected account ID from the app's settings. Other local app data and browser storage remain until you delete them.

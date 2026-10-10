@@ -13,6 +13,8 @@ func main() {
 	mygo.Bind(library)
 	mygo.Bind(&Store{launch: library.launch})
 	mygo.Bind(&App{})
+	updates := &Updates{}
+	mygo.Bind(updates)
 
 	mygo.App.WhenReady(func() {
 		dir, err := mygo.App.Path(mygo.PathUserData)
@@ -39,6 +41,7 @@ func main() {
 		// The window gets back the full screen state it was closed in;
 		// the setting decides instead.
 		win.SetFullScreen(library.StartFullScreen())
+		updates.start()
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

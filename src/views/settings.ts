@@ -1,4 +1,4 @@
-import type { Account } from "../api";
+import type { Account, UpdateStatus } from "../api";
 import { clock, esc } from "../format";
 import { commands, isChanged, keysOf, nameOf, SLOTS, type Command, type Device } from "../shortcuts";
 import { badge, hint, icon, keyHint, shortcut } from "../ui";
@@ -11,6 +11,7 @@ export interface SettingsState {
   account: Account;
   fullScreen: boolean;
   startFullScreen: boolean;
+  update: UpdateStatus;
   /** The key or button slot waiting for a key or button press, if any. */
   recording: { id: Command; slot: number; device: Device } | null;
   /** The names of the controllers connected. */
@@ -93,7 +94,74 @@ function general(s: SettingsState): string {
     </div>
     <button type="button" class="setting-button" data-action="reload">Reload</button>
   </div>
+  ${updateSetting(s.update)}
 </div>`;
+}
+
+/** The version of the app, and how far updating it got. */
+export function updateSetting(u: UpdateStatus): string {
+  return `
+  <div class="setting update-setting">
+    <div class="setting-text">
+      <span class="setting-label">Sit and Play ${esc(u.current)}</span>
+      <span class="setting-detail">${updateDetail(u)}</span>
+      ${u.notes && (u.state === "downloading" || u.state === "ready") ? `<div class="update-notes">${notes(u.notes)}</div>` : ""}
+    </div>
+    ${
+      u.state === "unsupported"
+        ? `<button type="button" class="setting-button" data-action="releases">Releases</button>`
+        : u.state === "ready"
+          ? `<button type="button" class="setting-button setting-button-primary" data-action="update-restart">Restart</button>`
+          : `<button type="button" class="setting-button" data-action="update-check">${u.state === "failed" ? "Try again" : "Check now"}</button>`
+    }
+  </div>`;
+}
+
+/** Release notes, from the plain lines, headings and "- " items of a version's section of CHANGELOG.md. */
+function notes(markdown: string): string {
+  let html = "";
+  let list = false;
+  for (const raw of markdown.split("\n")) {
+    const line = raw.trim();
+    const item = line.startsWith("- ");
+    if (list && !item) {
+      html += "</ul>";
+      list = false;
+    }
+    if (!line) continue;
+    if (item) {
+      if (!list) html += "<ul>";
+      list = true;
+      html += `<li>${esc(line.slice(2))}</li>`;
+    } else if (line.startsWith("#")) {
+      html += `<h3>${esc(line.replace(/^#+\s*/, ""))}</h3>`;
+    } else {
+      html += `<p>${esc(line)}</p>`;
+    }
+  }
+  return list ? html + "</ul>" : html;
+}
+
+function updateDetail(u: UpdateStatus): string {
+  const version = esc(u.version ?? "");
+  switch (u.state) {
+    case "unsupported":
+      return "This copy doesn't update itself. Update it with your package manager, or download a new version.";
+    case "checking":
+      return "Checking for a new version…";
+    case "upToDate":
+      return "You have the latest version.";
+    case "downloading":
+      return `Downloading version ${version}… ${Math.floor(u.progress * 100)}%`;
+    case "ready":
+      return `Version ${version} is installed. Restart to use it, or it starts next time.`;
+    case "failed":
+      return u.version
+        ? `Can't install version ${version} right now.`
+        : "Can't check for a new version right now. Check your internet connection.";
+    default:
+      return "New versions download and install by themselves.";
+  }
 }
 
 function accountPane(a: Account): string {

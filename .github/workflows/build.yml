@@ -2,6 +2,9 @@ name: Build
 
 on:
   workflow_call:
+    secrets:
+      MYGO_UPDATER_PRIVATE_KEY:
+        required: false
   workflow_dispatch:
 
 permissions:
@@ -46,6 +49,8 @@ jobs:
       - name: Build packages
         env:
           BUILD_PLATFORM: ${{ matrix.platform }}
+          # Only release builds sign the updates that installed apps download.
+          MYGO_UPDATER_PRIVATE_KEY: ${{ startsWith(github.ref, 'refs/tags/v') && secrets.MYGO_UPDATER_PRIVATE_KEY || '' }}
         run: bun run build -platform "$BUILD_PLATFORM"
       - name: Verify generated bindings
         run: git diff --exit-code -- src/mygo.ts
@@ -64,6 +69,17 @@ jobs:
             compgen -G "build/$BUILD_ARTIFACT/*.tar.gz" > /dev/null
             test -s "build/$BUILD_ARTIFACT/install.sh"
             cp build/"$BUILD_ARTIFACT"/*.deb build/"$BUILD_ARTIFACT"/*.tar.gz build/"$BUILD_ARTIFACT"/install.sh artifacts/
+          fi
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            # The update manifest, the archive it points to, and the deltas
+            # from earlier versions, which the first release has none of.
+            test -s "build/$BUILD_ARTIFACT/update-$BUILD_ARTIFACT.json"
+            compgen -G "build/$BUILD_ARTIFACT/*-$BUILD_ARTIFACT.tar.gz" > /dev/null
+            cp build/"$BUILD_ARTIFACT"/update-*.json artifacts/
+            cp build/"$BUILD_ARTIFACT"/*.tar.gz artifacts/
+            if compgen -G "build/$BUILD_ARTIFACT/*.delta" > /dev/null; then
+              cp build/"$BUILD_ARTIFACT"/*.delta artifacts/
+            fi
           fi
           test -s "build/$BUILD_ARTIFACT/LICENSE"
           test -s "build/$BUILD_ARTIFACT/licenses/Sora-OFL.txt"

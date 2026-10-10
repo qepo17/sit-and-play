@@ -3,7 +3,8 @@
 The Release workflow builds Windows and Linux x86-64 packages when you push a `v*` tag.
 It runs the same checks as PR CI, then creates a draft GitHub release with the packages and `SHA256SUMS`.
 Only the final upload job has `contents: write` permission.
-No signing credentials are required for the current unsigned builds.
+Release builds also sign the updates that installed apps download.
+The packages themselves are unsigned.
 
 ## Prepare the public launch
 
@@ -25,13 +26,34 @@ to the `Sit and Play` directory before starting the new build.
 Those directories are under `%APPDATA%` on Windows and `$XDG_CONFIG_HOME` on Linux, which defaults to `~/.config`.
 If the new directory already contains settings, back them up before replacing its file.
 
+## Set up update signing
+
+Installed apps check the latest published release for `update-<os>-<arch>.json`,
+and accept only updates signed with the key whose public half is `updates.publicKey` in `mygo.config.ts`.
+The release workflow reads the secret key from the `MYGO_UPDATER_PRIVATE_KEY` repository secret.
+Only builds of `v*` tags use it, so PR and `main` builds write no update files.
+
+To add the secret from the key that `mygo keygen` wrote, run:
+
+```sh
+gh secret set MYGO_UPDATER_PRIVATE_KEY < ~/.config/mygo/update-keys/mygo-update.key
+```
+
+Back up `mygo-update.key` in a password manager and never commit it.
+If the key is lost, installed apps can't update anymore, and users have to install a new release by hand.
+If it leaks, anyone who has it can sign updates for every installed copy.
+Changing the key has the same effect as losing it: apps built with the old public key reject updates signed with the new one.
+
 ## Create a release
 
 1. Update `version` in `package.json`, which `mygo.config.ts` uses for every package.
    Use `MAJOR.MINOR.PATCH`, or a prerelease such as `0.2.0-beta.1`.
-2. Open a PR with the version change and any documentation changes.
-3. Wait for CI and merge the PR into `main`.
-4. Update your local checkout and tag the merged commit. For version `0.1.0`, run:
+2. In `CHANGELOG.md`, rename `## Unreleased` to the version and date, such as `## [0.1.0] - 2026-10-12`,
+   and add a new empty `## Unreleased` section above it.
+   Installed apps show this section when they update, and the Release workflow fails without it.
+3. Open a PR with the version change, the changelog, and any documentation changes.
+4. Wait for CI and merge the PR into `main`.
+5. Update your local checkout and tag the merged commit. For version `0.1.0`, run:
 
    ```sh
    git switch main
@@ -40,16 +62,17 @@ If the new directory already contains settings, back them up before replacing it
    git push origin v0.1.0
    ```
 
-5. Wait for the [Release workflow](https://github.com/qepo17/sit-and-play/actions/workflows/release.yml) to finish.
+6. Wait for the [Release workflow](https://github.com/qepo17/sit-and-play/actions/workflows/release.yml) to finish.
    The tag must match the version in `package.json` or the workflow fails before building.
-6. Open the draft on [GitHub Releases](https://github.com/qepo17/sit-and-play/releases).
+7. Open the draft on [GitHub Releases](https://github.com/qepo17/sit-and-play/releases).
    Review the generated notes and explain known limitations or upgrade steps.
-7. Download and test the Windows installer and a Linux package on their target systems.
+8. Download and test the Windows installer and a Linux package on their target systems.
    Check Steam detection, game launching, keyboard navigation, controller input, and uninstall behavior.
-8. Publish the draft after those checks pass.
+9. Publish the draft after those checks pass. Installed apps update to it within a day,
+   or at once when the user selects **Check now** in **Settings → General**.
 
-Tags with a version suffix create prereleases. Published packages do not update themselves automatically.
-Users install a new release manually.
+Tags with a version suffix create prereleases. Apps don't update to prereleases, only to the latest release.
+Debian package installs don't update themselves. Users install the new `.deb` with apt.
 
 ## Check the downloads
 
@@ -61,6 +84,9 @@ Each release contains these files, with its version substituted:
 | `sit-and-play_<version>_amd64.deb` | Debian and Ubuntu package |
 | `sit-and-play-<version>-linux-amd64.tar.gz` | Linux app and resources |
 | `install.sh` | Per-user Linux installer, downloaded alongside the archive |
+| `sit-and-play-<version>-windows-amd64.tar.gz` | Windows update archive, which installed apps download |
+| `update-linux-amd64.json`, `update-windows-amd64.json` | Update manifests: the version, the archive's URL, its signature, and its deltas |
+| `sit-and-play-<old>-to-<version>-<os>-amd64.delta` | Smaller updates from up to 3 earlier versions, when they're smaller than the archive |
 | `SHA256SUMS` | SHA-256 checksums for the packages |
 
 Download `SHA256SUMS` and the packages into the same directory.

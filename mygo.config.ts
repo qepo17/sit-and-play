@@ -7,6 +7,12 @@ export default defineConfig({
   version,
   copyright: "Copyright (c) 2026 qepo17 and contributors",
   resources: ["LICENSE", "THIRD_PARTY_NOTICES.md", "licenses"],
+  // Installed apps download new versions from the latest GitHub release,
+  // signed by the release workflow (see docs/RELEASING.md).
+  updates: {
+    publicKey: "HlKy2UtXXXeAQOaXdBRPMvH/Y60SHbfW8fqu0DbVP+E=",
+    github: "qepo17/sit-and-play",
+  },
   linux: {
     maintainer: "qepo17 <taufiqseptry17@gmail.com>",
     comment: "A controller-friendly interface for your Steam library",
